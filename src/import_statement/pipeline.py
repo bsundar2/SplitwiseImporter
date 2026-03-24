@@ -102,6 +102,13 @@ def process_statement(
         detail = row.get("detail")
         merchant = row.get("description") or ""
 
+        # Determine if this is a credit/refund early so we can allow missing
+        # cc_reference_id for credits (these often lack a transaction id).
+        try:
+            is_credit_flag = bool(row.get("is_credit", False)) or float(amount) < 0
+        except Exception:
+            is_credit_flag = bool(row.get("is_credit", False))
+
         # Check merchant filter if specified
         if merchant_filter:
             if merchant_filter.lower() not in merchant.lower():
@@ -127,19 +134,30 @@ def process_statement(
         desc_clean = clean_merchant_name(desc)
         desc_raw = desc
 
+        # Prefer the parsed `cc_reference_id` produced by `parse_statement()`.
         cc_reference_id = None
-        if detail is not None:
+        parsed_cc = row.get("cc_reference_id")
+        if parsed_cc is not None and str(parsed_cc).strip().lower() not in ["", "nan", "none"]:
+            cc_reference_id = str(parsed_cc).strip()
+
+        # Fallback: use raw detail only when it looks like an ID (contains digits
+        # or is a short single-line token). Avoid using verbose/multiline detail
+        # text as the cc_reference_id.
+        if not cc_reference_id and detail is not None:
             s = str(detail).strip()
             if s and s.lower() != "nan":
-                cc_reference_id = s
-
-        # Extract cc_reference_id from row if parsed (from detail column)
-        if not cc_reference_id and "cc_reference_id" in row:
-            cc_reference_id = row.get("cc_reference_id")
+                is_multiline = "\n" in s or "\\n" in s
+                has_digit = any(ch.isdigit() for ch in s)
+                if has_digit or (not is_multiline and len(s) < 40):
+                    cc_reference_id = s
 
         if not cc_reference_id:
-            error_msg = f"Transaction is missing required cc_reference_id (date={date}, amount={amount}, description='{desc}')"
-            raise ValueError(error_msg)
+            # Allow missing cc_reference_id for credit/refund transactions
+            if is_credit_flag:
+                cc_reference_id = None
+            else:
+                error_msg = f"Transaction is missing required cc_reference_id (date={date}, amount={amount}, description='{desc}')"
+                raise ValueError(error_msg)
 
         # Detect if this is a refund/credit (negative amount OR explicit is_credit flag)
         is_credit = row.get("is_credit", False) or float(amount) < 0

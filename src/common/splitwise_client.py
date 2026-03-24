@@ -575,6 +575,13 @@ class SplitwiseClient:
             return None
 
         # Fallback: Fetch from API (legacy behavior, doesn't have details field)
+        # Ensure lookback_days has a sensible default to avoid TypeError when None
+        if lookback_days is None:
+            try:
+                lookback_days = int(os.getenv("CC_REFERENCE_LOOKBACK_DAYS", "365"))
+            except Exception:
+                lookback_days = 365
+
         end_date = datetime.now().date()
         start_date = end_date - timedelta(days=lookback_days)
 
