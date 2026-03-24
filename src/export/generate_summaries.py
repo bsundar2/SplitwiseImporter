@@ -21,7 +21,7 @@ from src.common.env import load_project_env
 
 load_project_env()
 
-from src.common.sheets_sync import write_to_sheets
+from src.common.sheets_sync import write_to_sheets, read_from_sheets
 from src.common.utils import LOG
 from src.constants.gsheets import (
     WORKSHEET_MONTHLY_SUMMARY,
@@ -36,28 +36,30 @@ from src.database import DatabaseManager
 DEFAULT_BUDGET_FILE = "config/budget_2026.json"
 
 
-def fetch_transactions_for_analysis(year: int) -> pd.DataFrame:
-    """Fetch all transactions for the specified year from database.
+def fetch_transactions_for_analysis(year: int = None) -> pd.DataFrame:
+    """Fetch transactions for the specified year (or all time if None) from database.
 
     Args:
-        year: Year to analyze
+        year: Year to analyze, or None for all time
 
     Returns:
         DataFrame with transaction data
     """
-    LOG.info(f"Fetching transactions for {year}...")
-
     db = DatabaseManager()
-    start_date = f"{year}-01-01"
-    end_date = f"{year}-12-31"
 
-    # Get all transactions for analysis
-    transactions = db.get_transactions_with_splitwise_ids(
-        start_date=start_date, end_date=end_date
-    )
+    if year:
+        LOG.info(f"Fetching transactions for {year}...")
+        start_date = f"{year}-01-01"
+        end_date = f"{year}-12-31"
+        transactions = db.get_transactions_with_splitwise_ids(
+            start_date=start_date, end_date=end_date
+        )
+    else:
+        LOG.info("Fetching transactions for ALL TIME...")
+        transactions = db.get_transactions_with_splitwise_ids()
 
     if not transactions:
-        LOG.warning(f"No transactions found for {year}")
+        LOG.warning(f"No transactions found for {year if year else 'all time'}")
         return pd.DataFrame()
 
     # Convert to DataFrame
@@ -154,11 +156,13 @@ def generate_monthly_summary(df: pd.DataFrame, year: int) -> pd.DataFrame:
     # Format month as "YYYY-MM" for better sorting in sheets
     monthly["Month"] = monthly["year_month"].dt.strftime("%Y-%m")
 
-    # Calculate cumulative spending
-    monthly["Cumulative Spending"] = monthly["Total Spent (Net)"].cumsum()
+    # Calculate cumulative spending per year
+    monthly["year"] = monthly["year_month"].dt.year
+    monthly["Cumulative Spending"] = monthly.groupby("year")["Total Spent (Net)"].cumsum()
+    monthly = monthly.drop(columns=["year"])
 
-    # Calculate month-over-month change
-    monthly["MoM Change"] = monthly["Total Spent (Net)"].pct_change() * 100
+    # Calculate month-over-month change (leave as raw decimal for Sheets % formatting)
+    monthly["MoM Change"] = monthly["Total Spent (Net)"].pct_change()
     monthly["MoM Change"] = monthly["MoM Change"].fillna(0)
 
     # Round numeric columns
@@ -172,6 +176,19 @@ def generate_monthly_summary(df: pd.DataFrame, year: int) -> pd.DataFrame:
     ]
     for col in numeric_cols:
         monthly[col] = monthly[col].round(2)
+
+    # Reorder and keep only requested columns
+    cols_to_keep = [
+        "Month",
+        "Total Spent (Net)",
+        "Avg Transaction",
+        "Transaction Count",
+        "Total Paid",
+        "Total Net",
+        "Cumulative Spending",
+        "MoM Change",
+    ]
+    monthly = monthly[cols_to_keep]
 
     return monthly
 
@@ -487,7 +504,10 @@ Examples:
     )
 
     parser.add_argument(
-        "--year", type=int, required=True, help="Year to analyze (e.g., 2026)"
+        "--year", type=int, help="Year to analyze (e.g., 2026). Required unless --all-time is used."
+    )
+    parser.add_argument(
+        "--all-time", action="store_true", help="Analyze all time instead of a specific year"
     )
     parser.add_argument(
         "--budget",
@@ -512,26 +532,31 @@ Examples:
             "--sheet-key must be provided (or set SPREADSHEET_KEY env var)"
         )
 
+    if not args.year and not args.all_time:
+        parser.error("--year or --all-time must be provided")
+
+    analyze_year = None if args.all_time else args.year
+
     # Fetch transaction data
-    df = fetch_transactions_for_analysis(args.year)
+    df = fetch_transactions_for_analysis(analyze_year)
 
     if df.empty:
-        print(f"No transactions found for {args.year}")
+        print(f"No transactions found for {analyze_year if analyze_year else 'all time'}")
         return 1
 
     print(f"\n{'='*60}")
-    print(f"Generating Budget Summaries for {args.year}")
+    print(f"Generating Budget Summaries for {analyze_year if analyze_year else 'ALL TIME'}")
     print(f"{'='*60}\n")
 
     # Generate summaries
-    monthly_summary = generate_monthly_summary(df, args.year)
-    category_breakdown = generate_category_breakdown(df, args.year)
-    monthly_trends = generate_monthly_trends(df, args.year)
-    category_monthly = generate_category_monthly_breakdown(df, args.year)
+    monthly_summary = generate_monthly_summary(df, analyze_year)
+    category_breakdown = generate_category_breakdown(df, analyze_year)
+    monthly_trends = generate_monthly_trends(df, analyze_year)
+    category_monthly = generate_category_monthly_breakdown(df, analyze_year)
 
     # Load budget and generate budget vs actual
     budget = load_budget(args.budget)
-    budget_vs_actual = generate_budget_vs_actual(df, args.year, budget)
+    budget_vs_actual = generate_budget_vs_actual(df, analyze_year, budget)
 
     if args.dry_run:
         print("\n" + "=" * 60)
@@ -562,43 +587,45 @@ Examples:
 
     db = DatabaseManager()
 
-    # Filter out months that have already been written with matching data
-    unwritten_months = []
-    for _, row in monthly_summary.iterrows():
-        year_month = str(row["Month"])
-        existing = db.get_monthly_summary(year_month)
-
-        # Add month if not written yet, or if data has changed significantly
-        if not existing or not existing.get("written_to_sheet", False):
-            unwritten_months.append(row)
-        else:
-            # Check if transaction count changed (simple way to detect data changes)
-            existing_txn_count = existing.get("transaction_count", 0)
-            new_txn_count = int(row["Transaction Count"])
-
-            if existing_txn_count != new_txn_count:
-                LOG.info(
-                    f"Detected data change for {year_month}: {existing_txn_count} → {new_txn_count} transactions"
-                )
-                unwritten_months.append(row)
-
-    if not unwritten_months:
-        print(f"✓ {WORKSHEET_MONTHLY_SUMMARY}: All months already written")
+    # Always merge and write out all generated summaries for the year to ensure formatting is up-to-date
+    if monthly_summary.empty:
+        print(f"✓ {WORKSHEET_MONTHLY_SUMMARY}: No summary data to write")
     else:
-        # Create DataFrame with only unwritten months
-        unwritten_df = pd.DataFrame(unwritten_months)
+        if args.all_time:
+            # For --all-time, completely overwrite without merging
+            final_df = monthly_summary
+            if "Month" in final_df.columns:
+                final_df = final_df.sort_values("Month", ascending=False)
+        else:
+            # For a specific year, read existing sheet and merge to prevent duplicates
+            existing_sheet_df = read_from_sheets(args.sheet_key, WORKSHEET_MONTHLY_SUMMARY)
+            
+            if existing_sheet_df is not None and not existing_sheet_df.empty:
+                months_to_update = monthly_summary["Month"].tolist()
+                # Keep rows from existing sheet that are not in the update list
+                if "Month" in existing_sheet_df.columns:
+                    existing_sheet_df = existing_sheet_df[~existing_sheet_df["Month"].isin(months_to_update)]
+                
+                # Combine and sort (descending by Month so newest is at the top)
+                final_df = pd.concat([existing_sheet_df, monthly_summary], ignore_index=True)
+                if "Month" in final_df.columns:
+                    final_df = final_df.sort_values("Month", ascending=False)
+            else:
+                final_df = monthly_summary
+                if "Month" in final_df.columns:
+                    final_df = final_df.sort_values("Month", ascending=False)
 
-        # Write only the unwritten months (append to preserve other years)
+        # Write the combined sheet with overwrite instead of append
         write_to_sheets(
-            unwritten_df,
+            final_df,
             worksheet_name=WORKSHEET_MONTHLY_SUMMARY,
             spreadsheet_key=args.sheet_key,
-            append=True,  # Append new months to existing sheet
-            skip_formatting=True,  # Skip transaction-specific formatting
+            append=False,  # Overwrite with merged or new data
+            skip_formatting=False,  # Apply format explicitly
         )
 
         # Save the written rows to database
-        for row in unwritten_months:
+        for _, row in monthly_summary.iterrows():
             year_month = str(row["Month"])
             db.save_monthly_summary(
                 year_month=year_month,
@@ -613,7 +640,7 @@ Examples:
             )
 
         print(
-            f"✓ {WORKSHEET_MONTHLY_SUMMARY}: Added {len(unwritten_months)} new months"
+            f"✓ {WORKSHEET_MONTHLY_SUMMARY}: Merged and wrote {len(monthly_summary)} months for {args.year if args.year else 'all time'}"
         )
 
     url = f"https://docs.google.com/spreadsheets/d/{args.sheet_key}"
