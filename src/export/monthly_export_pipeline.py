@@ -186,6 +186,7 @@ def run_generate_summaries(year: int, dry_run: bool = False) -> bool:
         "generate_summaries.py",
         "--year",
         str(year),
+        "--all-time",
     ]
 
     if dry_run:

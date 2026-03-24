@@ -587,33 +587,14 @@ Examples:
 
     db = DatabaseManager()
 
-    # Always merge and write out all generated summaries for the year to ensure formatting is up-to-date
+    # Always write out all generated summaries for the year to ensure formatting is up-to-date
     if monthly_summary.empty:
         print(f"✓ {WORKSHEET_MONTHLY_SUMMARY}: No summary data to write")
     else:
-        if args.all_time:
-            # For --all-time, completely overwrite without merging
-            final_df = monthly_summary
-            if "Month" in final_df.columns:
-                final_df = final_df.sort_values("Month", ascending=False)
-        else:
-            # For a specific year, read existing sheet and merge to prevent duplicates
-            existing_sheet_df = read_from_sheets(args.sheet_key, WORKSHEET_MONTHLY_SUMMARY)
-            
-            if existing_sheet_df is not None and not existing_sheet_df.empty:
-                months_to_update = monthly_summary["Month"].tolist()
-                # Keep rows from existing sheet that are not in the update list
-                if "Month" in existing_sheet_df.columns:
-                    existing_sheet_df = existing_sheet_df[~existing_sheet_df["Month"].isin(months_to_update)]
-                
-                # Combine and sort (descending by Month so newest is at the top)
-                final_df = pd.concat([existing_sheet_df, monthly_summary], ignore_index=True)
-                if "Month" in final_df.columns:
-                    final_df = final_df.sort_values("Month", ascending=False)
-            else:
-                final_df = monthly_summary
-                if "Month" in final_df.columns:
-                    final_df = final_df.sort_values("Month", ascending=False)
+        # Completely overwrite without merging
+        final_df = monthly_summary
+        if "Month" in final_df.columns:
+            final_df = final_df.sort_values("Month", ascending=False)
 
         # Write the combined sheet with overwrite instead of append
         write_to_sheets(
