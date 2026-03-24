@@ -15,6 +15,7 @@ from src.constants.gsheets import (
     DATE_FORMAT_PATTERN,
     DEFAULT_COLUMN_WIDTH,
     SHEETS_AUTHENTICATION_FILE,
+    WORKSHEET_MONTHLY_SUMMARY,
 )
 from src.common.utils import LOG
 
@@ -99,6 +100,14 @@ def _apply_column_formats(worksheet, write_data: pd.DataFrame):
         LOG.info(
             "Worksheet object does not support .apply_format(); skipping column formatting"
         )
+        return
+
+    if getattr(worksheet, "title", None) == WORKSHEET_MONTHLY_SUMMARY:
+        currency_format = {"numberFormat": {"type": "CURRENCY", "pattern": CURRENCY_FORMAT_PATTERN}}
+        percentage_format = {"numberFormat": {"type": "PERCENT", "pattern": "0.00%"}}
+        for col in ["B", "C", "E", "F", "G"]:
+            worksheet.apply_format(f"{col}2:{col}", currency_format)
+        worksheet.apply_format("H2:H", percentage_format)
         return
 
     # Format entire columns so formatting persists even if rows are added later.

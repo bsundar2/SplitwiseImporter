@@ -40,49 +40,11 @@
         "--year",
         "2026",
         "--start-date",
-        "2026-02-01",
+        "2026-03-01",
         "--end-date",
-        "2026-02-28",
+        "2026-03-31",
         "--statement",
-        "data/raw/amex2026.csv",
-        "--append-only"
-      ]
-    },
-    {
-      "name": "Monthly Export Sync Only",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/src/export/monthly_export_pipeline.py",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/config/.env",
-      "env": {
-        "PYTHONPATH": "${workspaceFolder}"
-      },
-      "args": [
-        "--year",
-        "2026",
-        "--sync-only"
-      ]
-    },
-    {
-      "name": "Monthly Export Pipeline",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/src/export/monthly_export_pipeline.py",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/config/.env",
-      "env": {
-        "PYTHONPATH": "${workspaceFolder}"
-      },
-      "args": [
-        "--year",
-        "2026",
-        "--start-date",
-        "2026-02-01",
-        "--end-date",
-        "2026-02-28",
-        "--statement",
-        "data/raw/amex2026.csv",
+        "data/raw/bofa/bofa_card2_2026.csv",
         "--append-only"
       ]
     },
@@ -109,12 +71,13 @@
         "program": "${workspaceFolder}/src/import_statement/pipeline.py",
         "console": "integratedTerminal",
         "envFile": "${workspaceFolder}/config/.env",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        },
         "args": [
           "--statement",
-          "data/raw/bofa/bofa_card1_2026.csv",
-          "--dry-run",
-          "--worksheet-name",
-          "${env:DRY_RUN_WORKSHEET_NAME}"
+          "data/raw/bofa/bofa_card2_2026.csv",
+          "--dry-run"
         ]
     },
     {
