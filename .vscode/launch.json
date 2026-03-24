@@ -44,7 +44,7 @@
         "--end-date",
         "2026-03-31",
         "--statement",
-        "data/raw/amex/amex2026.csv",
+        "data/raw/bofa/bofa_card2_2026.csv",
         "--append-only"
       ]
     },
@@ -71,12 +71,13 @@
         "program": "${workspaceFolder}/src/import_statement/pipeline.py",
         "console": "integratedTerminal",
         "envFile": "${workspaceFolder}/config/.env",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        },
         "args": [
           "--statement",
-          "data/raw/bofa/bofa_card1_2026.csv",
-          "--dry-run",
-          "--worksheet-name",
-          "${env:DRY_RUN_WORKSHEET_NAME}"
+          "data/raw/bofa/bofa_card2_2026.csv",
+          "--dry-run"
         ]
     },
     {

@@ -54,30 +54,34 @@ def _is_credit(row):
     """Check if transaction is a credit based on amount and bank."""
     bank = row.get("_bank", "amex")
     amount = row["amount"]
-    # Only treat negative as credit for Amex
     if bank == "amex":
         return amount < 0
-    # For BoFA, negative is normal, so no credits
-    return False
+    elif bank == "bofa":
+        # For BoFA, positive amounts are credits (payments, refunds), negative are expenses
+        return amount > 0
+    return amount < 0
 
 
 def _is_likely_refund(row):
-    """Check if transaction is likely a refund based on description."""
+    """Check if transaction is likely a refund based on description.
+    
+    Treats any valid credit operation as a refund unless it matches
+    known payment/reward patterns.
+    """
     if not row["is_credit"]:
         return False
 
-    # Combine description and merchant for pattern matching
+    # Combine description and category for pattern matching
     category_text = row.get("category", "") or ""
     combined_text = f"{row['description']} {category_text}".lower()
 
     # Exclude payment patterns
-    payment_keywords = ["payment", "autopay", "thank you", "settle"]
+    payment_keywords = ["payment", "autopay", "thank you", "settle", "points for", "reward"]
     if any(keyword in combined_text for keyword in payment_keywords):
         return False
 
-    # Look for refund indicators
-    refund_keywords = ["refund", "credit", "return", "reversal", "chargeback"]
-    return any(keyword in combined_text for keyword in refund_keywords)
+    # Since it is a credit and NOT a payment, assume it is a refund
+    return True
 
 
 def parse_csv(path):
@@ -214,23 +218,17 @@ def parse_csv(path):
     # Normalize amounts to positive
     processed_df["amount"] = processed_df["amount"].abs()
 
-    # Filter out payment/autopay transactions
-    payment_patterns = [
-        r"\bAUTOPAY\b",
-        r"\bPAYMENT\s*-\s*THANK\s*YOU\b",
-        r"\bPOINTS\s+FOR\s+AMEX\b",
-    ]
-    combined_pattern = "|".join(f"(?:{pattern})" for pattern in payment_patterns)
-    payment_filter = processed_df["description"].str.contains(combined_pattern, case=False, na=False, regex=True)
-    filtered_payments = processed_df[payment_filter]
-    processed_df = processed_df[~payment_filter]
-    payment_filtered = len(filtered_payments)
-
-    if payment_filtered > 0:
-        LOG.info("[TEMP] Filtered out %d payment/credit/reimbursement transactions", payment_filtered)
-        if not filtered_payments.empty:
-            LOG.info("[TEMP] Sample of filtered payment/credit transactions:")
-            for _, row in filtered_payments.head(5).iterrows():
+    # Filter out all non-refund credits (e.g. payments, statement credits, rewards)
+    non_refund_credit_filter = (processed_df["is_credit"]) & (~processed_df["is_refund"])
+    filtered_credits = processed_df[non_refund_credit_filter]
+    processed_df = processed_df[~non_refund_credit_filter]
+    
+    credit_filtered = len(filtered_credits)
+    if credit_filtered > 0:
+        LOG.info("[TEMP] Filtered out %d non-refund credit (payment/reward) transactions", credit_filtered)
+        if not filtered_credits.empty:
+            LOG.info("[TEMP] Sample of filtered credit transactions:")
+            for _, row in filtered_credits.head(5).iterrows():
                 truncated_desc = row["description"][:50] + "..." if len(row["description"]) > 50 else row["description"]
                 LOG.info("  [TEMP] %s - %s - $%.2f", row["date"], truncated_desc, row["amount"])
 
