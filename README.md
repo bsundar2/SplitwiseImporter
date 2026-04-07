@@ -25,96 +25,66 @@ A robust, automated pipeline for managing personal finances by importing credit 
 
 ## Quick Start
 
-### Recommended: Automated Monthly Pipeline
+### Recommended: Monthly Export Pipeline
 
-The easiest way to process a new statement is the automated pipeline:
+The **Monthly Export Pipeline** is the primary, automated tool for managing your expenses. It handles several steps at once: syncing with Splitwise, importing new statements, exporting to Google Sheets, and generating budget summaries.
+
+#### Mode 1: Full Monthly Pipeline (with Statement Import)
+Use this when you have a new credit card statement to process.
 
 ```bash
-# Activate venv and set PYTHONPATH
+# 1. Activate venv and set PYTHONPATH
 source .venv/bin/activate
-export PYTHONPATH=/home/balaji94/PycharmProjects/SplitwiseImporter
+export PYTHONPATH=$PWD
 
-# Full pipeline: Import statement → Sync DB → Export to sheets
+# 2. Run the full pipeline
+# This syncs DB → Imports Statement → Syncs DB Again → Exports to Sheets → Generates Summaries
 python src/export/monthly_export_pipeline.py \
   --statement data/raw/jan2026.csv \
   --year 2026 \
   --start-date 2026-01-01 \
   --end-date 2026-01-31
+```
 
-# Sync and export only (no new statement)
+**What it does:**
+1. **Syncs database** with latest Splitwise data to ensure no duplicates.
+2. **Imports CSV statement** to Splitwise and categorizes transactions.
+3. **Syncs database again** to capture the newly imported expenses.
+4. **Exports to Google Sheets** (default: `Expenses 2026` worksheet).
+5. **Generates Budget Summaries** (e.g., `Monthly Summary`).
+
+#### Mode 2: Sync Only Mode (No Statement)
+Use this to refresh your Google Sheets and summaries from existing Splitwise data without importing a new statement.
+
+```bash
+# Sync and export only
 python src/export/monthly_export_pipeline.py --year 2026 --sync-only
+```
 
-# Append-only mode (only export unwritten transactions)
+#### Mode 3: Append Only Mode
+By default, the pipeline overwrites the worksheet for a full refresh. Use `--append-only` to only add transactions that haven't been written to the sheet yet.
+
+```bash
+# Append-only export
 python src/export/monthly_export_pipeline.py --year 2026 --sync-only --append-only
+```
 
-# Dry run to preview all changes
+#### Dry Run
+Always run with `--dry-run` first to preview changes. For **Full Monthly Pipeline** (Mode 1), the dry run will also write the parsed transactions to a dedicated Google Sheet (default: `Statement Imports`) so you can manually verify categorizations and amounts before actually adding them to Splitwise.
+
+```bash
+# Preview changes for Mode 1 - writes to "Statement Imports" worksheet
 python src/export/monthly_export_pipeline.py \
   --statement data/raw/jan2026.csv \
   --year 2026 \
-  --dry-run
-```
-
-This single command:
-1. Imports your CSV statement to Splitwise
-2. Syncs database with Splitwise (updates payment info)
-3. Exports to Google Sheets (filters payments, shows only 12 columns)
-
-### Generate Budget Summaries
-
-After exporting transactions, generate budget analysis and spending patterns:
-
-```bash
-# Generate all summary sheets for 2026
-python src/export/generate_summaries.py --year 2026
-
-# Preview summaries without writing
-python src/export/generate_summaries.py --year 2026 --dry-run
-```
-
-**Summary sheets generated:**
-- **Monthly Summary** - Total spending by month with MoM changes and cumulative totals
-
-### Manual DB Sync
-For precise control or historical adjustments:
-
-### Process a Credit Card Statement (Manual Steps)
-```bash
-# Parse and categorize transactions
-python src/import_statement/pipeline.py --statement data/raw/your_statement.csv
-
-If you need to troubleshoot or run individual steps:
-
-```bash
-# 1. Import statement to Splitwise
-python src/import_statement/pipeline.py \
-  --statement data/raw/your_statement.csv \
   --start-date 2026-01-01 \
-  --end-date 2026-01-31
-
-# Dry run to preview without saving
-python src/import_statement/pipeline.py \
-  --statement data/raw/your_statement.csv \
+  --end-date 2026-01-31 \
   --dry-run
 
-# 2. Sync database with Splitwise
-python src/db_sync/sync_from_splitwise.py --year 2026 --live
-
-# Dry run first to preview
-python src/db_sync/sync_from_splitwise.py --year 2026 --dry-run
-
-# 3. Export to Google Sheets
-python src/export/splitwise_export.py \
-  --source database \
-  --year 2026 \
-  --worksheet "Expenses 2026" \
-  --overwrite
-
-# Dry run export
-python src/export/splitwise_export.py \
-  --source database \
-  --year 2026 \
-  --dry-run
+# Preview changes for Mode 2
+python src/export/monthly_export_pipeline.py --year 2026 --sync-only --dry-run
 ```
+
 
 ### Review & Improve Merchant Extraction
 
@@ -305,27 +275,22 @@ SplitwiseImporter/
 
 ### Monthly Expense Processing Pipeline
 
-**IMPORTANT:** Follow this order to ensure proper data flow and chronological sorting:
+The **Monthly Export Pipeline** is the recommended way to process new statements as it ensures all steps (syncing, importing, and exporting) are performed in the correct order.
 
-1. **Import credit card statements to Splitwise**
-   ```bash
-   # Parse and add new transactions to Splitwise
-   python src/import_statement/pipeline.py --statement data/raw/amex_jan2026.csv
-   ```
+```bash
+# Process a new statement from start to finish
+python src/export/monthly_export_pipeline.py \
+  --statement data/raw/amex_jan2026.csv \
+  --year 2026 \
+  --start-date 2026-01-01 \
+  --end-date 2026-01-31
+```
 
-2. **Export Splitwise to Google Sheets** (use overwrite mode)
-   ```bash
-   # Export with overwrite to maintain chronological sorting
-   python src/export/splitwise_export.py --start-date 2026-01-01 --end-date 2026-12-31 --overwrite
-   ```
-
-**Why this order matters:**
-- Credit card statements may contain retroactive/backdated transactions (e.g., processing delays)
-- Splitwise must be updated first with all transactions for the period
-- Overwrite mode re-sorts all expenses chronologically, placing backdated entries in correct position
-- Append mode would place retroactive expenses at the bottom, breaking chronological order
-
-**Note:** Always use `--overwrite` when exporting after importing statements to maintain proper sorting.
+**Why the pipeline matters:**
+- **Order of Operations**: It syncs Splitwise data *before* importing to prevent duplicates from overlapping statements.
+- **Retroactive Transactions**: It syncs again *after* importing to capture Splitwise IDs for the new transactions.
+- **Chronological Sorting**: It uses `--overwrite` by default for exports, which re-sorts all expenses chronologically in Google Sheets.
+- **Automation**: It combines 5 manual steps into a single idempotent command.
 
 ### First-Time Statement Import
 1. Place your CSV statement in `data/raw/`
@@ -409,9 +374,8 @@ DRY_RUN_WORKSHEET_NAME=Statement Imports
 The expense processing workflow can be automated with these steps:
 
 1. **Statement Download**: Automate CSV download from credit card provider (or manual upload to `data/raw/`)
-2. **Import to Splitwise**: Run `pipeline.py` with new statement
-3. **Export to Sheets**: Run `splitwise_export.py --overwrite` after import completes
-4. **Verification**: Check logs for import/export counts and any errors
+2. **Unified Pipeline**: Run `monthly_export_pipeline.py` with the new statement.
+3. **Verification**: Check logs for sync/import/export counts and any errors.
 
 **Recommended schedule:**
 - Run pipeline monthly after credit card statement is available
