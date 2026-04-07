@@ -55,8 +55,11 @@ See [docs/database_sync_guide.md](docs/database_sync_guide.md) for detailed arch
 1. Create a virtual environment: `python -m venv .venv`
 2. Activate the environment: `source .venv/bin/activate`
 3. Install dependencies: `pip install -r requirements.txt`
-4. Add your API keys to `config/.env`
-5. Set PYTHONPATH: `export PYTHONPATH=/home/balaji94/PycharmProjects/SplitwiseImporter`
+4. Add your API keys and configuration to `config/.env` (see Environment Variables section below)
+5. Set up Google Sheets access:
+   - Place your service account JSON file at `config/gsheets_authentication.json`
+   - Share your spreadsheet with the service account email address
+6. Set PYTHONPATH: `export PYTHONPATH=/home/balaji94/PycharmProjects/SplitwiseImporter`
 
 ## Quick Start
 
@@ -446,6 +449,10 @@ Required API credentials and default settings:
 SPLITWISE_CONSUMER_KEY=your_key_here
 SPLITWISE_CONSUMER_SECRET=your_secret_here
 SPLITWISE_API_KEY=your_api_key_here
+
+# Splitwise User IDs (Get these from your Splitwise profile or API)
+SPLITWISE_SELF_ID=your_self_user_id_here
+SPLITWISE_PARTNER_ID=your_partner_user_id_here
 
 # Google Sheets
 SPREADSHEET_KEY=your_google_sheets_key
