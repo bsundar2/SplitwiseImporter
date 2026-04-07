@@ -6,3 +6,8 @@ config/gsheets_authentication.json
 .ipynb_checkpoints/
 .idea/
 /data/
+.coverage
+htmlcov/
+coverage_report.txt
+*.cover
+.pytest_cache/

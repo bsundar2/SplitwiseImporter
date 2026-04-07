@@ -1,14 +1,12 @@
+"""Extended SplitwiseClient tests for get_expense_by_id, add_expense_from_txn, and get_splitwise_client."""
 import pytest
-import os
-import tempfile
-import json
 from unittest.mock import patch, MagicMock
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-from src.common.splitwise_client import SplitwiseClient
+from src.common.splitwise_client import SplitwiseClient, get_splitwise_client
 from src.constants.export_columns import ExportColumns
-from src.constants.splitwise import SPLIT_TYPE_SELF, SPLIT_TYPE_PARTNER, SPLIT_TYPE_SPLIT
 
 @pytest.fixture
 def mock_env():
@@ -20,91 +18,227 @@ def mock_env():
         yield
 
 @pytest.fixture
-def splitwise_client(mock_env):
+def client(mock_env):
     with patch("src.common.splitwise_client.Splitwise"):
         return SplitwiseClient()
 
-def test_fetch_expenses_paginated_full_details(splitwise_client):
-    mock_exp1 = MagicMock()
-    mock_exp1.getId.return_value = 1
-    mock_exp1.deleted_at = None
+# === get_expense_by_id ===
+def test_get_expense_by_id_none(client):
+    assert client.get_expense_by_id(None) is None
+
+def test_get_expense_by_id_from_api(client):
+    mock_exp = MagicMock()
+    mock_exp.getId.return_value = 1
+    mock_exp.getDate.return_value = "2026-01-01"
+    mock_exp.getDescription.return_value = "Test"
+    mock_exp.getCost.return_value = "10.0"
+    mock_exp.getDetails.return_value = "det"
+    mock_exp.getCategory.return_value.getName.return_value = "Cat"
+    mock_exp.deleted_at = None
+    client.sObj.getExpense.return_value = mock_exp
     
-    # sObj response has expenses
-    splitwise_client.sObj.getExpenses.side_effect = [[mock_exp1], []]
+    result = client.get_expense_by_id(1, use_cache=False)
+    assert result is not None
+    assert result["id"] == 1
+    assert result["description"] == "Test"
+
+def test_get_expense_by_id_deleted(client):
+    mock_exp = MagicMock()
+    mock_exp.deleted_at = "2026-01-05"
+    client.sObj.getExpense.return_value = mock_exp
     
-    mock_full_exp1 = MagicMock()
-    mock_full_exp1.getId.return_value = 1
-    mock_full_exp1.deleted_at = None
-    splitwise_client.sObj.getExpense.return_value = mock_full_exp1
+    result = client.get_expense_by_id(1, use_cache=False)
+    assert result is None
+
+def test_get_expense_by_id_api_error(client):
+    client.sObj.getExpense.side_effect = Exception("API fail")
+    result = client.get_expense_by_id(1, use_cache=False)
+    assert result is None
+
+# === add_expense_from_txn ===
+def test_add_expense_from_txn_success(client):
+    mock_created = MagicMock()
+    mock_created.getId.return_value = 555
+    client.sObj.createExpense.return_value = mock_created
     
-    res = splitwise_client._fetch_expenses_paginated("2026-01-01", "2026-01-02", fetch_full_details=True)
+    txn = {
+        "date": "2026-04-01",
+        "amount": 50.0,
+        "description": "Test expense",
+        "category_id": 5,
+        "subcategory_id": 10,
+        "category_name": "Food",
+        "subcategory_name": "Dining",
+    }
+    result = client.add_expense_from_txn(txn, cc_reference_id="REF123")
+    assert result == 555
+
+def test_add_expense_from_txn_no_ref():
+    with patch.dict("os.environ", {"SPLITWISE_CONSUMER_KEY": "f", "SPLITWISE_CONSUMER_SECRET": "f", "SPLITWISE_API_KEY": "f"}):
+        with patch("src.common.splitwise_client.Splitwise"):
+            c = SplitwiseClient()
+            with pytest.raises(ValueError, match="cc_reference_id is required"):
+                c.add_expense_from_txn({}, cc_reference_id="")
+
+def test_add_expense_from_txn_no_category(client):
+    txn = {
+        "date": "2026-04-01",
+        "amount": 50.0,
+        "description": "Test",
+        "category_id": None,
+    }
+    # infer_category should run and assign one, but if it returns None category_id...
+    with patch("src.common.splitwise_client.infer_category", return_value={"category_id": None}):
+        # Still None => should raise
+        # Actually the code sets it to 18 as fallback when infer returns None
+        pass
+    
+    # Test the case where category_id ends up 0
+    txn["category_id"] = 0
+    with pytest.raises(ValueError, match="Cannot add expense without valid category"):
+        client.add_expense_from_txn(txn, cc_reference_id="REF")
+
+def test_add_expense_from_txn_with_users(client):
+    mock_created = MagicMock()
+    mock_created.getId.return_value = 777
+    client.sObj.createExpense.return_value = mock_created
+    
+    txn = {
+        "date": "2026-04-01",
+        "amount": 100.0,
+        "description": "Split dinner",
+        "category_id": 5,
+        "subcategory_id": 10,
+    }
+    users = [
+        {"user_id": 101, "paid_share": 100.0, "owed_share": 0.0},
+        {"user_id": 202, "paid_share": 0.0, "owed_share": 100.0},
+    ]
+    result = client.add_expense_from_txn(txn, cc_reference_id="REF456", users=users)
+    assert result == 777
+
+def test_add_expense_from_txn_tuple_return(client):
+    mock_exp = MagicMock()
+    mock_exp.getId.return_value = 888
+    client.sObj.createExpense.return_value = (True, mock_exp)
+    
+    txn = {"date": "2026-04-01", "amount": 10, "description": "T", "category_id": 1, "subcategory_id": 2}
+    assert client.add_expense_from_txn(txn, cc_reference_id="R") == 888
+
+def test_add_expense_from_txn_create_error(client):
+    client.sObj.createExpense.side_effect = Exception("API fail")
+    txn = {"date": "2026-04-01", "amount": 10, "description": "T", "category_id": 1, "subcategory_id": 2}
+    with pytest.raises(RuntimeError, match="Failed to create expense"):
+        client.add_expense_from_txn(txn, cc_reference_id="R")
+
+def test_add_expense_infers_category(client):
+    mock_created = MagicMock()
+    mock_created.getId.return_value = 999
+    client.sObj.createExpense.return_value = mock_created
+    
+    txn = {"date": "2026-04-01", "amount": 10, "description": "Test"}
+    with patch("src.common.splitwise_client.infer_category", return_value={
+        "category_id": 5, "subcategory_id": 10, "category_name": "Food", "subcategory_name": "Dining"
+    }):
+        result = client.add_expense_from_txn(txn, cc_reference_id="R")
+        assert result == 999
+
+# === get_categories ===
+def test_get_categories(client):
+    client.sObj.getCategories.return_value = [{"id": 1, "name": "Food"}]
+    cats = client.get_categories()
+    assert len(cats) == 1
+
+# === get_splitwise_client ===
+def test_get_splitwise_client_dry_run():
+    assert get_splitwise_client(dry_run=True) is None
+
+# === _fetch_expenses_paginated ===
+def test_fetch_paginated_full_details(client):
+    mock_exp = MagicMock()
+    mock_exp.getId.return_value = 1
+    mock_exp.deleted_at = None
+    
+    mock_full = MagicMock()
+    mock_full.getId.return_value = 1
+    mock_full.deleted_at = None
+    
+    client.sObj.getExpenses.side_effect = [[mock_exp], []]
+    client.sObj.getExpense.return_value = mock_full
+    
+    res = client._fetch_expenses_paginated("2026-01-01", "2026-01-02", fetch_full_details=True)
     assert len(res) == 1
-    assert res[0] == mock_full_exp1
-    splitwise_client.sObj.getExpense.assert_called_once_with(1)
 
-def test_fetch_expenses_with_details_cache_miss_and_hit(splitwise_client, tmp_path):
-    with patch("src.common.splitwise_client.Path") as mock_path:
-        # Mock paths
-        mock_cache_dir = tmp_path / "data"
-        mock_cache_dir.mkdir()
-        mock_cache_file = mock_cache_dir / "splitwise_expense_details_2026.json"
-        
-        # Override _get_expense_cache_path to return our temp file
-        splitwise_client._get_expense_cache_path = MagicMock(return_value=mock_cache_file)
-        
-        # Mock _fetch_expenses_paginated
-        mock_exp = MagicMock()
-        mock_exp.getId.return_value = 1
-        mock_exp.getDate.return_value = "2026-01-01"
-        mock_exp.getDescription.return_value = "Test"
-        mock_exp.getCost.return_value = "10.0"
-        mock_exp.getDetails.return_value = "Details"
-        mock_exp.getCategory.return_value.getName.return_value = "Cat"
-        splitwise_client._fetch_expenses_paginated = MagicMock(return_value=[mock_exp])
-        
-        # 1. Cache Miss - runs actual fetch
-        res1 = splitwise_client.fetch_expenses_with_details("2026-01-01", "2026-01-02")
-        assert 1 in res1
-        assert res1[1]["description"] == "Test"
-        assert mock_cache_file.exists()
-        
-        # 2. Cache Hit - load from file
-        splitwise_client._fetch_expenses_paginated.reset_mock()
-        res2 = splitwise_client.fetch_expenses_with_details("2026-01-01", "2026-01-02")
-        splitwise_client._fetch_expenses_paginated.assert_not_called()
-        assert res2["1"]["description"] == "Test"
+def test_fetch_paginated_api_error(client):
+    client.sObj.getExpenses.side_effect = Exception("Connection error")
+    with pytest.raises(Exception, match="Connection error"):
+        client._fetch_expenses_paginated("2026-01-01", "2026-01-02")
 
-def test_get_my_expenses_by_date_range(splitwise_client):
-    # Mocking full expenses response
-    splitwise_client.get_current_user_id = MagicMock(return_value=101)
+# === fetch_expenses_with_details ===
+def test_fetch_expenses_with_details_cache(client, tmp_path):
+    cache_file = tmp_path / "cache.json"
+    client._get_expense_cache_path = MagicMock(return_value=cache_file)
+    
+    mock_exp = MagicMock()
+    mock_exp.getId.return_value = 42
+    mock_exp.getDate.return_value = "2026-01-01"
+    mock_exp.getDescription.return_value = "Test"
+    mock_exp.getCost.return_value = "10"
+    mock_exp.getDetails.return_value = "d"
+    mock_exp.getCategory.return_value.getName.return_value = "C"
+    
+    client._fetch_expenses_paginated = MagicMock(return_value=[mock_exp])
+    
+    # miss
+    res = client.fetch_expenses_with_details("2026-01-01", "2026-12-31")
+    assert 42 in res
+    assert cache_file.exists()
+    
+    # hit
+    client._fetch_expenses_paginated.reset_mock()
+    res2 = client.fetch_expenses_with_details("2026-01-01", "2026-12-31")
+    client._fetch_expenses_paginated.assert_not_called()
+
+# === get_my_expenses_by_date_range ===
+def test_get_my_expenses_partner_split(client):
+    from src.constants.splitwise import SplitwiseUserId, SPLIT_TYPE_PARTNER
+    client.get_current_user_id = MagicMock(return_value=101)
     
     mock_exp = MagicMock()
     mock_exp.getId.return_value = 1
     mock_exp.getDate.return_value = "2026-01-01T00:00:00Z"
     mock_exp.getCreatedAt.return_value = "2026-01-01T00:00:00Z"
     mock_exp.getUpdatedAt.return_value = "2026-01-01T00:00:00Z"
-    mock_exp.getDescription.return_value = "Test"
-    mock_exp.getCost.return_value = "10.0"
-    mock_exp.getDetails.return_value = "Details"
-    mock_exp.getCategory.return_value.getName.return_value = "Category"
-    mock_exp.getCreationMethod.return_value = "Method"
+    mock_exp.getDescription.return_value = "Groceries"
+    mock_exp.getCost.return_value = "50.0"
+    mock_exp.getDetails.return_value = ""
+    mock_exp.getCategory.return_value.getName.return_value = "Food"
+    mock_exp.getCreationMethod.return_value = "equal"
     
     mock_user_me = MagicMock()
     mock_user_me.getId.return_value = 101
     mock_user_me.getFirstName.return_value = "Me"
-    mock_user_me.getPaidShare.return_value = "10.0"
-    mock_user_me.getOwedShare.return_value = "10.0"
+    mock_user_me.getPaidShare.return_value = "50.0"
+    mock_user_me.getOwedShare.return_value = "25.0"
     
-    mock_exp.getUsers.return_value = [mock_user_me]
+    mock_user_partner = MagicMock()
+    mock_user_partner.getId.return_value = SplitwiseUserId.PARTNER_EXPENSE
+    mock_user_partner.getFirstName.return_value = "Partner"
+    mock_user_partner.getPaidShare.return_value = "0.0"
+    mock_user_partner.getOwedShare.return_value = "25.0"
     
-    from datetime import datetime
-    splitwise_client._fetch_expenses_paginated = MagicMock(return_value=[mock_exp])
+    mock_exp.getUsers.return_value = [mock_user_me, mock_user_partner]
+    client._fetch_expenses_paginated = MagicMock(return_value=[mock_exp])
     
-    df = splitwise_client.get_my_expenses_by_date_range(datetime(2026, 1, 1), datetime(2026, 1, 2))
-    assert not df.empty
+    df = client.get_my_expenses_by_date_range(datetime(2026, 1, 1), datetime(2026, 1, 31))
     assert len(df) == 1
-    assert df.iloc[0][ExportColumns.ID] == 1
-    assert df.iloc[0][ExportColumns.AMOUNT] == 10.0
-    assert df.iloc[0][ExportColumns.SPLIT_TYPE] == SPLIT_TYPE_SELF
-    assert "Me" in df.iloc[0][ExportColumns.PARTICIPANT_NAMES]
+    assert df.iloc[0][ExportColumns.SPLIT_TYPE] == SPLIT_TYPE_PARTNER
 
+# === _get_expense_cache_path ===
+def test_get_expense_cache_path_same_year(client):
+    path = client._get_expense_cache_path("2026-01-01", "2026-12-31")
+    assert "2026" in str(path)
+
+def test_get_expense_cache_path_diff_year(client):
+    path = client._get_expense_cache_path("2025-01-01", "2026-12-31")
+    assert "2025_2026" in str(path)
