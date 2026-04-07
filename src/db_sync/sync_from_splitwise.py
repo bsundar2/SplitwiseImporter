@@ -12,11 +12,9 @@ It fetches expenses from Splitwise and:
 
 import argparse
 import sys
-from datetime import datetime
+from datetime import datetime as dt, timezone
 from typing import Dict, Set, Any
-
 import traceback
-from datetime import datetime as dt
 
 from src.common.splitwise_client import SplitwiseClient
 from src.database import DatabaseManager, Transaction
@@ -107,7 +105,7 @@ def parse_expense_to_transaction(row: Dict[str, Any]) -> Transaction:
         currency="USD",
         splitwise_id=expense_id,
         cc_reference_id=cc_reference_id,
-        imported_at=datetime.utcnow().isoformat(),
+        imported_at=dt.now(timezone.utc).isoformat(),
         notes=notes,
     )
 

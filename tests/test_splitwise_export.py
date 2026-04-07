@@ -157,11 +157,12 @@ def test_fetch_and_write_dedupes_by_id(mock_load_state, MockClient):
     assert len(df) == 1
     assert df.iloc[0][ExportColumns.DESCRIPTION] == "New"
 
+@patch("src.export.splitwise_export.read_from_sheets", return_value=None)
 @patch("src.export.splitwise_export.write_to_sheets", return_value="https://sheet.url")
 @patch("src.export.splitwise_export.save_exported_state")
 @patch("src.export.splitwise_export.SplitwiseClient")
 @patch("src.export.splitwise_export.load_exported_state")
-def test_fetch_and_write_live_splitwise(mock_load_state, MockClient, mock_save_state, mock_write):
+def test_fetch_and_write_live_splitwise(mock_load_state, MockClient, mock_save_state, mock_write, mock_read):
     mock_load_state.return_value = (set(), set())
     mock_client = MagicMock()
     MockClient.return_value = mock_client
