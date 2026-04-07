@@ -103,7 +103,9 @@ def _apply_column_formats(worksheet, write_data: pd.DataFrame):
         return
 
     if getattr(worksheet, "title", None) == WORKSHEET_MONTHLY_SUMMARY:
-        currency_format = {"numberFormat": {"type": "CURRENCY", "pattern": CURRENCY_FORMAT_PATTERN}}
+        currency_format = {
+            "numberFormat": {"type": "CURRENCY", "pattern": CURRENCY_FORMAT_PATTERN}
+        }
         percentage_format = {"numberFormat": {"type": "PERCENT", "pattern": "0.00%"}}
         for col in ["B", "C", "E", "F", "G"]:
             worksheet.apply_format(f"{col}2:{col}", currency_format)
