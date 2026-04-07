@@ -9,7 +9,7 @@ A robust, automated pipeline for managing personal finances by importing credit 
 **Architecture:**
 - **Splitwise** = Source of Truth (Manual edits & split management)
 - **Local SQLite Database** = Synced Mirror (Fast queries & historical archiving)
-- **Google Sheets** = Viewing Layer (Formatted exports & budget analysis)
+- **Google Sheets** = Viewing Layer (Formatted exports & spending analysis)
 
 ## Setup
 1. Create a virtual environment: `python -m venv .venv`
@@ -69,17 +69,10 @@ python src/export/generate_summaries.py --year 2026
 
 # Preview summaries without writing
 python src/export/generate_summaries.py --year 2026 --dry-run
-
-# With custom budget file
-python src/export/generate_summaries.py --year 2026 --budget config/budget_2026.json
 ```
 
 **Summary sheets generated:**
 - **Monthly Summary** - Total spending by month with MoM changes and cumulative totals
-- **Category Breakdown** - Spending by category with percentages and transaction counts
-- **Budget vs Actual** - Compare actual spending against budget targets with variance %
-- **Monthly Trends** - 3-month rolling averages and YTD trends
-- **Category by Month** - Pivot table showing category spending by month
 
 ### Manual DB Sync
 For precise control or historical adjustments:
