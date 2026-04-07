@@ -1,15 +1,23 @@
 # SplitwiseImporter
 
-A Python project to import Splitwise expenses, process credit card statements, categorize expenses, and sync to Google Sheets for budget tracking.
+A robust, automated Python pipeline for managing personal finances by importing credit card statements, categorizing expenses, and syncing them with Splitwise and Google Sheets for budget tracking.
 
-## 🎯 Project Overview
-
-A robust, automated pipeline for managing personal finances by importing credit card statements, categorizing expenses, and syncing them with Splitwise and Google Sheets.
+## Project Overview
 
 **Architecture:**
 - **Splitwise** = Source of Truth (Manual edits & split management)
 - **Local SQLite Database** = Synced Mirror (Fast queries & historical archiving)
 - **Google Sheets** = Viewing Layer (Formatted exports & spending analysis)
+
+## Core Features
+
+- **Automated Pipeline**: Single-command ETL (Extract, Transform, Load) for monthly statements.
+- **Smart Categorization**: 200+ merchant mappings with interactive review and auto-correction.
+- **Refund Handling**: Automatic detection and matching of refunds/credits.
+- **Budget Analysis**: Detailed monthly summaries, category breakdowns, and year-over-year trends in Google Sheets.
+- **Historical Archiving**: Complete transaction history (2013-2026) stored locally in SQLite.
+- **Year-Based Exporting**: Clean, structured spreadsheets with separate tabs for each year.
+- **Idempotent Updates**: Smart syncing ensures no duplicate entries and minimal API/Sheet writes.
 
 ## Setup
 1. Create a virtual environment: `python -m venv .venv`
@@ -21,7 +29,7 @@ A robust, automated pipeline for managing personal finances by importing credit 
 5. Set up Google Sheets access:
    - Place your service account JSON file at `config/gsheets_authentication.json`
    - Share your spreadsheet with the service account email address
-6. Set PYTHONPATH: `export PYTHONPATH=/home/balaji94/PycharmProjects/SplitwiseImporter`
+6. Set PYTHONPATH: `export PYTHONPATH=$PWD`
 
 ## Quick Start
 
@@ -86,31 +94,6 @@ python src/export/monthly_export_pipeline.py --year 2026 --sync-only --dry-run
 ```
 
 
-### Review & Improve Merchant Extraction
-
-The pipeline automatically generates a review file for extracted merchant names. Review and correct them to improve future processing:
-
-```bash
-# Unified review workflow (recommended - runs all steps)
-python src/merchant_review/run_review_workflow.py --processed-csv data/processed/your_statement.csv.processed.csv --batch 20
-
-# Or run steps individually:
-# 1. Generate review file
-python src/merchant_review/generate_review_file.py --processed-csv data/processed/your_statement.csv.processed.csv --output data/processed/merchant_names_for_review.csv
-
-# 2. Start interactive review (batch of 20)
-python src/merchant_review/review_merchants.py --batch 20
-
-# 3. Check progress
-python src/merchant_review/review_merchants.py --stats
-
-# 4. Apply your corrections to update the configuration
-python src/merchant_review/apply_review_feedback.py
-
-# Re-run pipeline to see improvements
-python src/import_statement/pipeline.py --statement data/raw/your_statement.csv
-```
-
 ### Export Options
 
 Export from Splitwise API or database to Google Sheets:
@@ -143,21 +126,6 @@ python src/export/splitwise_export.py \
 - Filters Payment transactions (excluded from sheets but tracked in DB)
 - Overwrite mode for full refresh or default append mode
 
-### Update Existing Splitwise Expenses
-
-```bash
-# Fix self-expenses with incorrect 50/50 splits (make them 100% owed)
-python src/update/update_self_expenses.py --start-date 2025-01-01 --end-date 2025-12-31
-
-# Dry run to preview changes
-python src/update/update_self_expenses.py --start-date 2025-01-01 --end-date 2025-12-31 --dry-run
-
-# Update a specific expense by ID
-python src/update/update_self_expenses.py --expense-id 1234567890
-
-# Limit number of updates (for testing)
-python src/update/update_self_expenses.py --start-date 2025-01-01 --limit 10
-```
 
 ### Bulk Category Updates
 
@@ -192,29 +160,6 @@ See `src/constants/splitwise.py` (SUBCATEGORY_IDS) for the full list of availabl
 
 Or use `--subcategory-id` with any Splitwise subcategory ID.
 
-### Process Refunds and Credits
-
-Refunds are automatically processed during statement import, but you can also process pending refunds separately:
-
-```bash
-# Automatic - refunds processed after importing statements
-python src/import_statement/pipeline.py --statement data/raw/jan2026.csv
-
-# Manual - process all pending refunds
-python -m src.import_statement.process_refunds --verbose
-
-# Dry run - preview refund matching
-python -m src.import_statement.process_refunds --dry-run --verbose
-```
-
-**How it works:**
-- Detects refunds (negative amounts in CSV)
-- Matches to original transaction by cc_reference_id or merchant+amount+date
-- Creates negative Splitwise expense with same category and split
-- Links refund to original in database for audit trail
-- Idempotent - safe to re-run, won't create duplicates
-
-See [docs/refund_handling_guide.md](docs/refund_handling_guide.md) for complete documentation.
 
 ## Project Structure
 
@@ -261,15 +206,6 @@ SplitwiseImporter/
 └── notebooks/                  # Jupyter analysis notebooks
 ```
 
-## 🚀 Core Features
-
-- **Automated Pipeline**: Single-command ETL (Extract, Transform, Load) for monthly statements.
-- **Smart Categorization**: 200+ merchant mappings with interactive review and auto-correction.
-- **Refund Handling**: Automatic detection and matching of refunds/credits.
-- **Budget Analysis**: Detailed monthly summaries, category breakdowns, and year-over-year trends in Google Sheets.
-- **Historical Archiving**: Complete transaction history (2013-2026) stored locally in SQLite.
-- **Year-Based Exporting**: Clean, structured spreadsheets with separate tabs for each year.
-- **Idempotent Updates**: Smart syncing ensures no duplicate entries and minimal API/Sheet writes.
 
 ## Common Workflows
 
@@ -360,7 +296,7 @@ DRY_RUN_WORKSHEET_NAME=Statement Imports
 
 ## Tips & Best Practices
 
-- **Always set PYTHONPATH** before running commands: `export PYTHONPATH=/path/to/SplitwiseImporter`
+- **Always set PYTHONPATH** before running commands: `export PYTHONPATH=$PWD`
 - **Use dry-run first** to preview changes before committing to Splitwise
 - **Review merchants regularly** to improve auto-categorization accuracy
 - **Process large statements in batches** to handle API rate limits gracefully
@@ -389,7 +325,7 @@ The expense processing workflow can be automated with these steps:
 
 ## Troubleshooting
 
-**Import fails with "ModuleNotFoundError"**: Set PYTHONPATH to project root  
+**Import fails with "ModuleNotFoundError"**: Set PYTHONPATH to project root (e.g., `export PYTHONPATH=$PWD`)  
 **Duplicate expenses created**: Check cache in `data/splitwise_expense_details_*.json`  
 **Wrong categories**: Review and correct in `config/merchant_category_lookup.json`  
 **Deleted expenses appearing**: Use `--overwrite` flag when exporting to filter them out  
