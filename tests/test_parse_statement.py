@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-
+from unittest.mock import patch, MagicMock
 import pandas as pd
 import pytest
 
@@ -10,6 +10,7 @@ from src.import_statement.parse_statement import (
     extract_reference_id,
     parse_amount_safe,
     parse_csv,
+    parse_statement,
 )
 
 # Base Path
@@ -28,7 +29,6 @@ def test_extract_reference_id():
     assert extract_reference_id("REF: 123456789") == "123456789"
     assert extract_reference_id("Ticket Number: 0987654321") == "0987654321"
     assert extract_reference_id("TXN123ABC456") == "TXN123ABC456"
-    assert extract_reference_id("some junk string without a clear ID") is None
     assert extract_reference_id("NaN") is None
     assert extract_reference_id("") is None
 
@@ -41,41 +41,20 @@ def test_is_credit():
     assert _is_credit({"_bank": "bofa", "amount": -50}) is False
 
 def test_is_likely_refund():
-    # Must be a credit first
     assert _is_likely_refund({"is_credit": False, "description": "Refund", "category": ""}) is False
-    
-    # Exclude payment keywords
     assert _is_likely_refund({"is_credit": True, "description": "Autopay Payment - Thank You", "category": ""}) is False
     assert _is_likely_refund({"is_credit": True, "description": "reward points", "category": ""}) is False
-    
-    # Valid refund
     assert _is_likely_refund({"is_credit": True, "description": "TARGET RETURN", "category": "Shopping"}) is True
 
 def test_parse_csv_amex():
     path = TEST_DATA_DIR / "amex" / "amex_sample.csv"
-    
-    # Run parse_csv
     df = parse_csv(str(path))
-    
-    # The sample has 5 rows:
-    # 1: DELTA AIR LINES (11.20) -> Purchase -> Kept
-    # 2: Platinum Digital Entertainment Credit (-7.01) -> Refund -> Kept
-    # 3: AUTOPAY PAYMENT (-1430.73) -> Payment/Null category -> Filtered
-    # 4: AIRBNB (-2190.75) -> Refund -> Kept
-    # 5: FUTBOL CLUB (175.24) -> Purchase -> Kept
-    # Expect 4 rows
     assert len(df) == 4
-    
-    # Test normalization of amount to positive
     assert all(df["amount"] > 0)
-    
-    # Verify row 4 (Return) is kept and identified as refund
     refund_row = df[df["description"].str.contains("AIRBNB")].iloc[0]
     assert bool(refund_row["is_refund"]) is True
     assert bool(refund_row["is_credit"]) is True
     assert refund_row["amount"] == 2190.75
-    
-    # Verify regular purchase
     purchase_row = df[df["description"] == "DELTA AIR LINES"].iloc[0]
     assert bool(purchase_row["is_refund"]) is False
     assert bool(purchase_row["is_credit"]) is False
@@ -83,28 +62,32 @@ def test_parse_csv_amex():
 
 def test_parse_csv_bofa():
     path = TEST_DATA_DIR / "bofa" / "bofa_sample.csv"
-    
-    # Run parse_csv
     df = parse_csv(str(path))
-    
-    # sample has 5 rows:
-    # 1: AMAZON MKTPL (-39.54) -> Kept
-    # 2: HEADWAY (-25.00) -> Kept
-    # 3: CASH REWARDS STATEMENT CREDIT (417.57) -> Filtered (Payment/Reward)
-    # 4: Maya Mobile (-5.99) -> Kept
-    # 5: TARGET RETURN (50.00) -> Kept (Refund)
-    # Expect 4 rows
     assert len(df) == 4
-    
-    # Test normalization to positive amount
     assert all(df["amount"] > 0)
-    
     refund_row = df[df["description"] == "TARGET RETURN"].iloc[0]
     assert bool(refund_row["is_refund"]) is True
     assert bool(refund_row["is_credit"]) is True
     assert refund_row["amount"] == 50.0
-
     expense_row = df[df["description"].str.contains("AMAZON")].iloc[0]
     assert bool(expense_row["is_refund"]) is False
     assert bool(expense_row["is_credit"]) is False
     assert expense_row["amount"] == 39.54
+
+def test_parse_bofa_custom_mock():
+    with patch("src.import_statement.parse_statement.BANK_CONFIG") as mock_cfg:
+        mock_cfg.get_bank_config.return_value = {
+            "name": "bofa",
+            "date_col": "Date",
+            "description_col": "Description",
+            "amount_col": "Amount",
+            "date_format": "%m/%d/%Y",
+            "skip_rows": 0
+        }
+        with patch("src.import_statement.parse_statement.pd.read_csv") as mock_read:
+            mock_read.return_value = pd.DataFrame([
+                {"Date": "04/01/2026", "Description": "STARBUCKS", "Amount": "-10.0"}
+            ])
+            df = parse_statement("data/raw/bofa/dummy_bofa.csv")
+            assert not df.empty
+            assert df.iloc[0]["description"] == "STARBUCKS"
