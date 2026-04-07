@@ -131,8 +131,9 @@ def test_process_statement_remote_error(mock_refund_proc, mock_client_cls, mock_
 
 @patch("src.import_statement.pipeline.parse_statement")
 @patch("src.import_statement.pipeline.DatabaseManager")
+@patch("src.import_statement.pipeline.SplitwiseClient")
 @patch("src.import_statement.pipeline.write_to_sheets")
-def test_process_statement_with_sheets(mock_write, mock_db_cls, mock_parse, sample_df):
+def test_process_statement_with_sheets(mock_write, mock_client_cls, mock_db_cls, mock_parse, sample_df):
     mock_parse.return_value = sample_df
     with patch("pandas.DataFrame.to_csv"), patch("src.import_statement.pipeline.mkdir_p"):
         process_statement("test.csv", dry_run=True, sheet_key="test_key", no_sheet=False)
@@ -140,6 +141,6 @@ def test_process_statement_with_sheets(mock_write, mock_db_cls, mock_parse, samp
 
 @patch("src.import_statement.pipeline.process_statement")
 def test_main_cli(mock_process):
-    with patch("sys.argv", ["script", "--statement", "test.csv", "--dry-run"]):
+    with patch("sys.argv", ["script", "--statement", "test.csv", "--dry-run", "--no-sheet"]):
         assert main() == 0
         mock_process.assert_called_once()

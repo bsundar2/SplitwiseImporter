@@ -221,18 +221,24 @@ def test_get_my_expenses_partner_split(client):
     mock_user_me.getPaidShare.return_value = "50.0"
     mock_user_me.getOwedShare.return_value = "25.0"
     
-    mock_user_partner = MagicMock()
-    mock_user_partner.getId.return_value = SplitwiseUserId.PARTNER_EXPENSE
-    mock_user_partner.getFirstName.return_value = "Partner"
-    mock_user_partner.getPaidShare.return_value = "0.0"
-    mock_user_partner.getOwedShare.return_value = "25.0"
+    mock_ids = MagicMock()
+    mock_ids.SELF_EXPENSE = 303
+    mock_ids.PARTNER_EXPENSE = 202
     
-    mock_exp.getUsers.return_value = [mock_user_me, mock_user_partner]
-    client._fetch_expenses_paginated = MagicMock(return_value=[mock_exp])
-    
-    df = client.get_my_expenses_by_date_range(datetime(2026, 1, 1), datetime(2026, 1, 31))
-    assert len(df) == 1
-    assert df.iloc[0][ExportColumns.SPLIT_TYPE] == SPLIT_TYPE_PARTNER
+    with patch("src.common.splitwise_client.SplitwiseUserId", mock_ids):
+        
+        mock_user_partner = MagicMock()
+        mock_user_partner.getId.return_value = 202
+        mock_user_partner.getFirstName.return_value = "Partner"
+        mock_user_partner.getPaidShare.return_value = "0.0"
+        mock_user_partner.getOwedShare.return_value = "25.0"
+        
+        mock_exp.getUsers.return_value = [mock_user_me, mock_user_partner]
+        client._fetch_expenses_paginated = MagicMock(return_value=[mock_exp])
+        
+        df = client.get_my_expenses_by_date_range(datetime(2026, 1, 1), datetime(2026, 1, 31))
+        assert len(df) == 1
+        assert df.iloc[0][ExportColumns.SPLIT_TYPE] == SPLIT_TYPE_PARTNER
 
 # === _get_expense_cache_path ===
 def test_get_expense_cache_path_same_year(client):
