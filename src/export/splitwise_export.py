@@ -270,14 +270,15 @@ def fetch_from_database(
                 details = cc_ref_match.group(1)
 
             # Extract MY_PAID
-            paid_match = re.search(r"Paid:\s*\$?([\d,]+\.?\d*)", txn.notes)
+            paid_match = re.search(r"Paid:\s*\$?\s*(-?[\d,]+\.?\d*)", txn.notes)
             if paid_match:
                 my_paid = float(paid_match.group(1).replace(",", ""))
 
             # Extract MY_OWED
-            owe_match = re.search(r"Owe:\s*\$?([\d,]+\.?\d*)", txn.notes)
+            owe_match = re.search(r"Owe:\s*\$?\s*(-?[\d,]+\.?\d*)", txn.notes)
             if owe_match:
                 my_owed = float(owe_match.group(1).replace(",", ""))
+
 
             # Extract participant names
             with_match = re.search(r"With:\s*([^|]+?)(?:\s*$|\s*\|)", txn.notes)
