@@ -137,7 +137,11 @@ def process_statement(
         # Prefer the parsed `cc_reference_id` produced by `parse_statement()`.
         cc_reference_id = None
         parsed_cc = row.get("cc_reference_id")
-        if parsed_cc is not None and str(parsed_cc).strip().lower() not in ["", "nan", "none"]:
+        if parsed_cc is not None and str(parsed_cc).strip().lower() not in [
+            "",
+            "nan",
+            "none",
+        ]:
             cc_reference_id = str(parsed_cc).strip()
 
         # Fallback: use raw detail only when it looks like an ID (contains digits

@@ -158,7 +158,9 @@ def generate_monthly_summary(df: pd.DataFrame, year: int) -> pd.DataFrame:
 
     # Calculate cumulative spending per year
     monthly["year"] = monthly["year_month"].dt.year
-    monthly["Cumulative Spending"] = monthly.groupby("year")["Total Spent (Net)"].cumsum()
+    monthly["Cumulative Spending"] = monthly.groupby("year")[
+        "Total Spent (Net)"
+    ].cumsum()
     monthly = monthly.drop(columns=["year"])
 
     # Calculate month-over-month change (leave as raw decimal for Sheets % formatting)
@@ -504,10 +506,14 @@ Examples:
     )
 
     parser.add_argument(
-        "--year", type=int, help="Year to analyze (e.g., 2026). Required unless --all-time is used."
+        "--year",
+        type=int,
+        help="Year to analyze (e.g., 2026). Required unless --all-time is used.",
     )
     parser.add_argument(
-        "--all-time", action="store_true", help="Analyze all time instead of a specific year"
+        "--all-time",
+        action="store_true",
+        help="Analyze all time instead of a specific year",
     )
     parser.add_argument(
         "--budget",
@@ -541,11 +547,15 @@ Examples:
     df = fetch_transactions_for_analysis(analyze_year)
 
     if df.empty:
-        print(f"No transactions found for {analyze_year if analyze_year else 'all time'}")
+        print(
+            f"No transactions found for {analyze_year if analyze_year else 'all time'}"
+        )
         return 1
 
     print(f"\n{'='*60}")
-    print(f"Generating Budget Summaries for {analyze_year if analyze_year else 'ALL TIME'}")
+    print(
+        f"Generating Budget Summaries for {analyze_year if analyze_year else 'ALL TIME'}"
+    )
     print(f"{'='*60}\n")
 
     # Generate summaries
