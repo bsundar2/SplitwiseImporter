@@ -49,9 +49,9 @@ def process_statement(
     if worksheet_name is None:
         worksheet_name = os.getenv("DRY_RUN_WORKSHEET_NAME", "Statement Imports")
     if start_date is None:
-        start_date = os.getenv("START_DATE", "2026-01-01")
+        start_date = os.getenv("START_DATE", f"{dt.now().year}-01-01")
     if end_date is None:
-        end_date = os.getenv("END_DATE", "2026-12-31")
+        end_date = os.getenv("END_DATE", f"{dt.now().year}-12-31")
 
     LOG.info("Processing statement %s (dry_run=%s)", path, dry_run)
     df = parse_statement(path)

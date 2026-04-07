@@ -236,6 +236,12 @@ def sync_from_splitwise(
             changes.append(f"amount: ${txn.amount:.2f} → ${sw_amount:.2f}")
             updates["amount"] = sw_amount
 
+        # Check total cost (raw_amount)
+        sw_total_cost = float(expense.get(ExportColumns.AMOUNT, 0))
+        if txn.raw_amount is not None and abs(sw_total_cost - txn.raw_amount) > 0.01:
+            changes.append(f"cost: ${txn.raw_amount:.2f} → ${sw_total_cost:.2f}")
+            updates["raw_amount"] = sw_total_cost
+
         # Check date
         sw_date_str = str(expense[ExportColumns.DATE])
         sw_date = sw_date_str.split("T")[0] if "T" in sw_date_str else sw_date_str
