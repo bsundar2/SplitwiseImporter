@@ -197,6 +197,6 @@ def test_main_cli_db(mock_fetch):
 @patch("src.export.splitwise_export.fetch_and_write")
 def test_main_cli_dry_run(mock_fetch):
     mock_fetch.return_value = (pd.DataFrame([{"id": 1}]), None)
-    with patch("sys.argv", ["script", "--year", "2026", "--dry-run"]):
+    with patch("sys.argv", ["script", "--source", "database", "--year", "2026", "--dry-run"]):
         assert main() == 0
         mock_fetch.assert_called_once()

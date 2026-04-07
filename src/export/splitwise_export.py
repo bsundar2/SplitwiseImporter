@@ -725,12 +725,12 @@ Examples:
     parser.add_argument(
         "--start-date",
         default=get_env("START_DATE"),
-        help="Start date (any parseable date string, e.g., '2023-01-01' or '3 months ago'). Defaults to START_DATE env var.",
+        help="Start date (any parseable date string). Defaults to START_DATE env var or current year start.",
     )
     parser.add_argument(
         "--end-date",
         default=get_env("END_DATE"),
-        help="End date (any parseable date string, e.g., '2023-12-31' or 'today'). Defaults to END_DATE env var.",
+        help="End date (any parseable date string). Defaults to END_DATE env var or current year end.",
     )
     parser.add_argument(
         "--worksheet-name",
@@ -793,9 +793,11 @@ Examples:
 
     if args.source == SOURCE_SPLITWISE:
         if not args.start_date:
-            raise ValueError(ERROR_START_DATE_REQUIRED)
+            args.start_date = f"{datetime.now().year}-01-01"
+            LOG.info("No start date provided, defaulting to %s", args.start_date)
         if not args.end_date:
-            raise ValueError(ERROR_END_DATE_REQUIRED)
+            args.end_date = f"{datetime.now().year}-12-31"
+            LOG.info("No end date provided, defaulting to %s", args.end_date)
 
     # Parse dates (use shared parse_date in src.utils)
     if args.year:
