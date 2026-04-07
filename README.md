@@ -21,7 +21,7 @@ A robust, automated pipeline for managing personal finances by importing credit 
 5. Set up Google Sheets access:
    - Place your service account JSON file at `config/gsheets_authentication.json`
    - Share your spreadsheet with the service account email address
-6. Set PYTHONPATH: `export PYTHONPATH=/home/balaji94/PycharmProjects/SplitwiseImporter`
+6. Set PYTHONPATH: `export PYTHONPATH=$PWD`
 
 ## Quick Start
 
@@ -360,7 +360,7 @@ DRY_RUN_WORKSHEET_NAME=Statement Imports
 
 ## Tips & Best Practices
 
-- **Always set PYTHONPATH** before running commands: `export PYTHONPATH=/path/to/SplitwiseImporter`
+- **Always set PYTHONPATH** before running commands: `export PYTHONPATH=$PWD`
 - **Use dry-run first** to preview changes before committing to Splitwise
 - **Review merchants regularly** to improve auto-categorization accuracy
 - **Process large statements in batches** to handle API rate limits gracefully
@@ -389,7 +389,7 @@ The expense processing workflow can be automated with these steps:
 
 ## Troubleshooting
 
-**Import fails with "ModuleNotFoundError"**: Set PYTHONPATH to project root  
+**Import fails with "ModuleNotFoundError"**: Set PYTHONPATH to project root (e.g., `export PYTHONPATH=$PWD`)  
 **Duplicate expenses created**: Check cache in `data/splitwise_expense_details_*.json`  
 **Wrong categories**: Review and correct in `config/merchant_category_lookup.json`  
 **Deleted expenses appearing**: Use `--overwrite` flag when exporting to filter them out  
