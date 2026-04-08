@@ -36,7 +36,7 @@ def test_process_statement_dry_run(MockBankConfig, MockClient, MockDB, mock_pars
     with patch("src.import_statement.pipeline.write_to_sheets") as mock_write, patch("src.import_statement.pipeline.mkdir_p"):
         with patch("pandas.DataFrame.to_csv"):
             df = process_statement(
-                path="data/raw/amex/statement.csv",
+                path="data/bank_statements/amex/statement.csv",
                 dry_run=True,
                 no_sheet=True,
                 start_date="2026-01-01",
@@ -73,7 +73,7 @@ def test_process_statement_db_exists(MockBankConfig, MockClient, MockDB, mock_pa
     
     with patch("pandas.DataFrame.to_csv"), patch("src.import_statement.pipeline.mkdir_p"):
         df = process_statement(
-            path="data/raw/amex/statement.csv",
+            path="data/bank_statements/amex/statement.csv",
             dry_run=False,
             no_sheet=True,
             start_date="2026-01-01",

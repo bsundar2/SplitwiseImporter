@@ -31,13 +31,13 @@ def test_detect_bank_from_path_and_config(mock_file):
     # init will load the config
     config = BankConfig(config_path=Path("dummy_path.json"))
     
-    assert config.detect_bank_from_path("data/raw/american express/amex2026.csv") == "amex"
-    assert config.detect_bank_from_path("data/raw/bank of america/bofa2026.csv") == "bofa"
-    assert config.detect_bank_from_path("data/raw/bofa_card2/statement.csv") == "bofa"
+    assert config.detect_bank_from_path("data/bank_statements/american express/amex2026.csv") == "amex"
+    assert config.detect_bank_from_path("data/bank_statements/bank of america/bofa2026.csv") == "bofa"
+    assert config.detect_bank_from_path("data/bank_statements/bofa_card2/statement.csv") == "bofa"
     assert config.get_bank_config("amex")["category_mapping_file"] == "amex_map.json"
 
     with pytest.raises(ValueError):
-        config.detect_bank_from_path("data/raw/chase/chase2026.csv")
+        config.detect_bank_from_path("data/bank_statements/chase/chase2026.csv")
         
     with pytest.raises(ValueError):
         config.get_bank_config("chase")

@@ -50,7 +50,7 @@ class BankConfig:
         """Detect bank from file path directory structure.
 
         Uses path_patterns from bank configurations to determine bank type.
-        Expected directory structure: data/raw/{path_pattern}/filename.csv
+        Expected directory structure: data/bank_statements/{path_pattern}/filename.csv
 
         Args:
             file_path: Path to statement file
@@ -75,7 +75,7 @@ class BankConfig:
         expected_dirs = []
         for bank_name, bank_config in self.config["banks"].items():
             patterns = bank_config.get("path_patterns", [])
-            expected_dirs.extend(f"data/raw/{pattern}/" for pattern in patterns)
+            expected_dirs.extend(f"data/bank_statements/{pattern}/" for pattern in patterns)
 
         raise ValueError(
             f"Cannot determine bank from file path: {file_path}. "

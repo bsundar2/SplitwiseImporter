@@ -312,7 +312,7 @@ The automated pipeline runs all four steps in sequence:
 # Full pipeline: Import new statement → Sync DB → Export to sheets → Generate summaries
 export PYTHONPATH=/home/balaji94/PycharmProjects/SplitwiseImporter
 python src/export/monthly_export_pipeline.py \
-  --statement data/raw/american\ express/jan2026.csv \
+  --statement data/bank_statements/american\ express/jan2026.csv \
   --year 2026 \
   --start-date 2026-01-01 \
   --end-date 2026-01-31
@@ -325,7 +325,7 @@ python src/export/monthly_export_pipeline.py --year 2026 --sync-only --append-on
 
 # Dry run to preview all changes
 python src/export/monthly_export_pipeline.py \
-  --statement data/raw/bank\ of\ america/jan2026.csv \
+  --statement data/bank_statements/bank\ of\ america/jan2026.csv \
   --year 2026 \
   --dry-run
 ```

@@ -6,11 +6,11 @@ config/gsheets_authentication.json
 .ipynb_checkpoints/
 .idea/
 data/
-!data/raw/
-!data/raw/american express/
-!data/raw/bank of america/
-data/raw/american express/sample_statement.csv
-data/raw/bank of america/sample_statement.csv
+!data/bank_statements/
+!data/bank_statements/american express/
+!data/bank_statements/bank of america/
+data/bank_statements/american express/sample_statement.csv
+data/bank_statements/bank of america/sample_statement.csv
 .coverage
 htmlcov/
 coverage_report.txt

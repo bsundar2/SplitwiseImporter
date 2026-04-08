@@ -523,8 +523,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python src/import_statement/pipeline.py --statement data/raw/amex2025.csv --dry-run
-  python src/import_statement/pipeline.py --statement data/raw/amex2025.csv --start-date 2025-01-01 --end-date 2025-12-31
+  python src/import_statement/pipeline.py --statement data/bank_statements/amex2025.csv --dry-run
+  python src/import_statement/pipeline.py --statement data/bank_statements/amex2025.csv --start-date 2025-01-01 --end-date 2025-12-31
         """,
     )
     parser.add_argument(
