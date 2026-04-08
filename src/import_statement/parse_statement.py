@@ -114,6 +114,9 @@ def parse_csv(path):
     bank_name = BANK_CONFIG.detect_bank_from_path(path)
     LOG.info("Processing %s statement: %s", bank_name, path)
 
+    # Validate CSV headers against bank's required columns
+    BANK_CONFIG.validate_csv_headers(list(dataframe.columns), bank_name)
+
     # Get bank-specific configuration
     bank_cfg = BANK_CONFIG.get_bank_config(bank_name)
 

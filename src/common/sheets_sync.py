@@ -45,13 +45,21 @@ def read_from_sheets(
     return df if not df.empty else None
 
 
-def _colnum_to_a1(n: int) -> str:
-    # 1 -> A, 27 -> AA
-    s = ""
-    while n > 0:
-        n, r = divmod(n - 1, 26)
-        s = chr(65 + r) + s
-    return s
+def _colnum_to_a1(column_number: int) -> str:
+    """Convert a 1-based column index to its Google Sheets A1 notation.
+
+    Args:
+        column_number: One-based column index (e.g. 1 => A, 27 => AA).
+
+    Returns:
+        The corresponding A1-style column label.
+    """
+    column_label = ""
+    value = column_number
+    while value > 0:
+        value, remainder = divmod(value - 1, 26)
+        column_label = chr(65 + remainder) + column_label
+    return column_label
 
 
 def _ensure_size_for_append(worksheet, start_row: int, num_rows: int, num_cols: int):

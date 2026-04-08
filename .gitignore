@@ -5,7 +5,12 @@ config/gsheets_authentication.json
 *.pyc
 .ipynb_checkpoints/
 .idea/
-/data/
+data/
+!data/raw/
+!data/raw/american express/
+!data/raw/bank of america/
+data/raw/american express/sample_statement.csv
+data/raw/bank of america/sample_statement.csv
 .coverage
 htmlcov/
 coverage_report.txt
