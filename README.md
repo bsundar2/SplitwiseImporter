@@ -199,9 +199,9 @@ SplitwiseImporter/
 │   ├── amex_category_mapping.json     # Amex category mappings
 │   └── gsheets_authentication.json    # Google Sheets credentials
 ├── data/
-│   ├── raw/                    # Raw credit card statements
+│   ├── bank_statements/        # Credit card statements
 │   ├── processed/              # Processed outputs and review files
-│   └── transactions.db         # SQLite database (4,889 transactions: 2013-2026)
+│   └── transactions.db         # SQLite database
 ├── docs/                       # Documentation
 └── notebooks/                  # Jupyter analysis notebooks
 ```

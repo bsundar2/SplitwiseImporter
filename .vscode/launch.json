@@ -44,7 +44,7 @@
         "--end-date",
         "2026-04-30",
         "--statement",
-        "data/raw/amex/amex2026.csv",
+        "data/bank_statements/american express/amex2026.csv",
         "--append-only"
       ]
     },

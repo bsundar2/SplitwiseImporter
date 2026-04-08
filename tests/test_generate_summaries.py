@@ -48,14 +48,19 @@ def test_monthly_summary_empty():
     assert result.empty
 
 # === fetch_transactions_for_analysis ===
+@patch("src.export.generate_summaries.SplitwiseClient")
 @patch("src.export.generate_summaries.DatabaseManager")
-def test_fetch_transactions_for_analysis_with_notes(mock_db_cls):
+def test_fetch_transactions_for_analysis_with_notes(mock_db_cls, mock_client_cls):
     mock_db = mock_db_cls.return_value
+    mock_client = mock_client_cls.return_value
+    mock_user = mock_client.get_current_user.return_value
+    mock_user.getFirstName.return_value = "Balaji"
+    
     from src.database.models import Transaction
     txn = Transaction(
         id=1, date="2026-04-01", amount=100.0, description="Test",
         merchant="Test Merchant", source="splitwise", imported_at="2026-04-01T12:00:00Z",
-        notes="Paid: $100.00 | Owe: $50.00", category="Food",
+        notes="Paid: $100.00 | Owe: $50.00 | With: Balaji, Friend", category="Food",
         is_refund=False, splitwise_deleted_at=None
     )
     mock_db.get_transactions_with_splitwise_ids.return_value = [txn]
@@ -66,14 +71,19 @@ def test_fetch_transactions_for_analysis_with_notes(mock_db_cls):
     assert df.iloc[0]["my_owed"] == 50.0
     assert df.iloc[0]["my_net"] == 50.0
 
+@patch("src.export.generate_summaries.SplitwiseClient")
 @patch("src.export.generate_summaries.DatabaseManager")
-def test_fetch_transactions_for_analysis_refund(mock_db_cls):
+def test_fetch_transactions_for_analysis_refund(mock_db_cls, mock_client_cls):
     mock_db = mock_db_cls.return_value
+    mock_client = mock_client_cls.return_value
+    mock_user = mock_client.get_current_user.return_value
+    mock_user.getFirstName.return_value = "Balaji"
+    
     from src.database.models import Transaction
     txn = Transaction(
         id=2, date="2026-04-01", amount=20.0, description="Refund",
         merchant="Refund Merchant", source="splitwise", imported_at="2026-04-01T12:00:00Z",
-        notes="Paid: $20.00 | Owe: $20.00", category="Food",
+        notes="Paid: $20.00 | Owe: $20.00 | With: Balaji", category="Food",
         is_refund=True, splitwise_deleted_at=None
     )
     mock_db.get_transactions_with_splitwise_ids.return_value = [txn]
