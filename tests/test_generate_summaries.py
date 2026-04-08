@@ -55,7 +55,7 @@ def test_fetch_transactions_for_analysis_with_notes(mock_db_cls):
     txn = Transaction(
         id=1, date="2026-04-01", amount=100.0, description="Test",
         merchant="Test Merchant", source="splitwise", imported_at="2026-04-01T12:00:00Z",
-        notes="Paid: $100.00 | Owe: $50.00", category="Food",
+        notes="Paid: $100.00 | Owe: $50.00 | With: Balaji, Friend", category="Food",
         is_refund=False, splitwise_deleted_at=None
     )
     mock_db.get_transactions_with_splitwise_ids.return_value = [txn]
@@ -73,7 +73,7 @@ def test_fetch_transactions_for_analysis_refund(mock_db_cls):
     txn = Transaction(
         id=2, date="2026-04-01", amount=20.0, description="Refund",
         merchant="Refund Merchant", source="splitwise", imported_at="2026-04-01T12:00:00Z",
-        notes="Paid: $20.00 | Owe: $20.00", category="Food",
+        notes="Paid: $20.00 | Owe: $20.00 | With: Balaji", category="Food",
         is_refund=True, splitwise_deleted_at=None
     )
     mock_db.get_transactions_with_splitwise_ids.return_value = [txn]
