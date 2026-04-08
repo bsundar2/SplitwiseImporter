@@ -48,9 +48,14 @@ def test_monthly_summary_empty():
     assert result.empty
 
 # === fetch_transactions_for_analysis ===
+@patch("src.export.generate_summaries.SplitwiseClient")
 @patch("src.export.generate_summaries.DatabaseManager")
-def test_fetch_transactions_for_analysis_with_notes(mock_db_cls):
+def test_fetch_transactions_for_analysis_with_notes(mock_db_cls, mock_client_cls):
     mock_db = mock_db_cls.return_value
+    mock_client = mock_client_cls.return_value
+    mock_user = mock_client.get_current_user.return_value
+    mock_user.getFirstName.return_value = "Balaji"
+    
     from src.database.models import Transaction
     txn = Transaction(
         id=1, date="2026-04-01", amount=100.0, description="Test",
@@ -66,9 +71,14 @@ def test_fetch_transactions_for_analysis_with_notes(mock_db_cls):
     assert df.iloc[0]["my_owed"] == 50.0
     assert df.iloc[0]["my_net"] == 50.0
 
+@patch("src.export.generate_summaries.SplitwiseClient")
 @patch("src.export.generate_summaries.DatabaseManager")
-def test_fetch_transactions_for_analysis_refund(mock_db_cls):
+def test_fetch_transactions_for_analysis_refund(mock_db_cls, mock_client_cls):
     mock_db = mock_db_cls.return_value
+    mock_client = mock_client_cls.return_value
+    mock_user = mock_client.get_current_user.return_value
+    mock_user.getFirstName.return_value = "Balaji"
+    
     from src.database.models import Transaction
     txn = Transaction(
         id=2, date="2026-04-01", amount=20.0, description="Refund",
