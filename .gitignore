@@ -9,8 +9,8 @@ data/
 !data/bank_statements/
 !data/bank_statements/american express/
 !data/bank_statements/bank of america/
-data/bank_statements/american express/sample_statement.csv
-data/bank_statements/bank of america/sample_statement.csv
+!data/bank_statements/american express/sample_statement.csv
+!data/bank_statements/bank of america/sample_statement.csv
 .coverage
 htmlcov/
 coverage_report.txt
