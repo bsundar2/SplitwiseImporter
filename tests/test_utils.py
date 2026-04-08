@@ -2,6 +2,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from datetime import datetime, date
+import dateparser
 import os
 import json
 import tempfile
@@ -20,6 +21,7 @@ from src.common.utils import (
     compute_import_id,
     parse_date_safe,
     parse_date,
+    normalize_splitwise_date_to_local,
     parse_float_safe,
     generate_fingerprint,
     infer_category,
@@ -146,6 +148,14 @@ def test_parse_date_safe_ambiguous():
 # === parse_date ===
 def test_parse_date():
     assert parse_date("2026-04-01") == date(2026, 4, 1)
+
+
+def test_normalize_splitwise_date_to_local():
+    timestamp = "2026-04-07T02:35:44Z"
+    expected = dateparser.parse(timestamp).astimezone().date().isoformat()
+    assert normalize_splitwise_date_to_local(timestamp) == expected
+    assert normalize_splitwise_date_to_local("2026-04-06") == "2026-04-06"
+
 
 def test_parse_date_invalid():
     with pytest.raises(ValueError):
