@@ -48,7 +48,7 @@ export PYTHONPATH=$PWD
 # 2. Run the full pipeline
 # This syncs DB → Imports Statement → Syncs DB Again → Exports to Sheets → Generates Summaries
 python src/export/monthly_export_pipeline.py \
-  --statement data/raw/jan2026.csv \
+  --statement data/bank_statements/jan2026.csv \
   --year 2026 \
   --start-date 2026-01-01 \
   --end-date 2026-01-31
@@ -83,7 +83,7 @@ Always run with `--dry-run` first to preview changes. For **Full Monthly Pipelin
 ```bash
 # Preview changes for Mode 1 - writes to "Statement Imports" worksheet
 python src/export/monthly_export_pipeline.py \
-  --statement data/raw/jan2026.csv \
+  --statement data/bank_statements/jan2026.csv \
   --year 2026 \
   --start-date 2026-01-01 \
   --end-date 2026-01-31 \
@@ -229,18 +229,18 @@ python src/export/monthly_export_pipeline.py \
 - **Automation**: It combines 5 manual steps into a single idempotent command.
 
 ### First-Time Statement Import
-1. Place your CSV statement in `data/raw/`
-2. Run dry-run to preview: `python src/import_statement/pipeline.py --statement data/raw/statement.csv --dry-run`
+1. Place your CSV statement in `data/bank_statements/`
+2. Run dry-run to preview: `python src/import_statement/pipeline.py --statement data/bank_statements/statement.csv --dry-run`
 3. Review merchant extractions in `data/processed/merchant_names_for_review.csv`
 4. Correct any issues: `python src/merchant_review/review_merchants.py`
-5. Run actual import: `python src/import_statement/pipeline.py --statement data/raw/statement.csv`
+5. Run actual import: `python src/import_statement/pipeline.py --statement data/bank_statements/statement.csv`
 
 ### Large Statement Processing (Batch Mode)
 ```bash
 # Process in batches of 50 transactions
-python src/import_statement/pipeline.py --statement data/raw/big_statement.csv --limit 50 --offset 0
-python src/import_statement/pipeline.py --statement data/raw/big_statement.csv --limit 50 --offset 50 --append
-python src/import_statement/pipeline.py --statement data/raw/big_statement.csv --limit 50 --offset 100 --append
+python src/import_statement/pipeline.py --statement data/bank_statements/big_statement.csv --limit 50 --offset 0
+python src/import_statement/pipeline.py --statement data/bank_statements/big_statement.csv --limit 50 --offset 50 --append
+python src/import_statement/pipeline.py --statement data/bank_statements/big_statement.csv --limit 50 --offset 100 --append
 # ... continue until done
 ```
 
@@ -309,7 +309,7 @@ DRY_RUN_WORKSHEET_NAME=Statement Imports
 
 The expense processing workflow can be automated with these steps:
 
-1. **Statement Download**: Automate CSV download from credit card provider (or manual upload to `data/raw/`)
+1. **Statement Download**: Automate CSV download from credit card provider (or manual upload to `data/bank_statements/`)
 2. **Unified Pipeline**: Run `monthly_export_pipeline.py` with the new statement.
 3. **Verification**: Check logs for sync/import/export counts and any errors.
 

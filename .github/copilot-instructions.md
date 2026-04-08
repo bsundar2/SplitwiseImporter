@@ -128,7 +128,9 @@ SplitwiseImporter/
 │   ├── amex_category_mapping.json
 │   └── gsheets_authentication.json
 ├── data/
-│   ├── raw/                    # Raw CSV statements
+│   ├── bank_statements/         # Bank statement CSV files - create subdirectories as needed:
+│   │   ├── american express/   # American Express credit card statements
+│   │   └── bank of america/    # Bank of America credit card/checking statements
 │   ├── processed/              # Processed outputs
 │   └── transactions.db         # SQLite database (4,889 transactions)
 └── docs/
@@ -310,7 +312,7 @@ The automated pipeline runs all four steps in sequence:
 # Full pipeline: Import new statement → Sync DB → Export to sheets → Generate summaries
 export PYTHONPATH=/home/balaji94/PycharmProjects/SplitwiseImporter
 python src/export/monthly_export_pipeline.py \
-  --statement data/raw/jan2026.csv \
+  --statement data/bank_statements/american\ express/jan2026.csv \
   --year 2026 \
   --start-date 2026-01-01 \
   --end-date 2026-01-31
@@ -323,7 +325,7 @@ python src/export/monthly_export_pipeline.py --year 2026 --sync-only --append-on
 
 # Dry run to preview all changes
 python src/export/monthly_export_pipeline.py \
-  --statement data/raw/jan2026.csv \
+  --statement data/bank_statements/bank\ of\ america/jan2026.csv \
   --year 2026 \
   --dry-run
 ```
@@ -344,7 +346,8 @@ python src/export/monthly_export_pipeline.py \
 
 Environment / Running Locally
 --------------------------------
-- **Activate virtualenv first:** Always activate the project's Python virtual environment before running scripts or installing packages. Example (typical venv in project root named `.venv`): `source .venv/bin/activate`
+- **CRITICAL: Always activate virtualenv first:** AI agents MUST activate the project's Python virtual environment BEFORE running any Python commands, installing packages, or executing scripts. This prevents installing packages in the wrong environment and ensures all dependencies are available. Example: `source .venv/bin/activate`
 - **CRITICAL: Set PYTHONPATH:** When running Python scripts from the terminal, ALWAYS set `PYTHONPATH` to the project root to ensure `src` module imports work correctly. Example: `PYTHONPATH=/home/balaji94/PycharmProjects/SplitwiseImporter python src/import_statement/pipeline.py`
+- **Package Installation:** AI agents should NEVER run `pip install` commands without first activating the virtual environment. Always use the pattern: `source .venv/bin/activate && pip install <package>`
 - **VS Code Environment Variables:** The `.vscode/launch.json` is set to pass `"envFile": "${workspaceFolder}/config/.env"`, which injects variables (e.g. `DRY_RUN_WORKSHEET_NAME`) at runtime inside the script. AVOID passing `${env:VAR_NAME}` explicitly inside `"args"` in `launch.json`, as VS Code will substitute them with an empty string before parsing if the host VS Code window hasn't loaded the `.env` file first.
 - **VS Code Settings:** Ensure `"python.terminal.useEnvFile": true` and `"python.envFile": "${workspaceFolder}/config/.env"` are in your `.vscode/settings.json` so the integrated terminal auto-sources secrets.

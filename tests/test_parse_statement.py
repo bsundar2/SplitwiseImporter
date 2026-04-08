@@ -88,6 +88,6 @@ def test_parse_bofa_custom_mock():
             mock_read.return_value = pd.DataFrame([
                 {"Date": "04/01/2026", "Description": "STARBUCKS", "Amount": "-10.0"}
             ])
-            df = parse_statement("data/raw/bofa/dummy_bofa.csv")
+            df = parse_statement("data/bank_statements/bofa/dummy_bofa.csv")
             assert not df.empty
             assert df.iloc[0]["description"] == "STARBUCKS"

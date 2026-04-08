@@ -6,8 +6,8 @@ Parse CSV statements into a pandas DataFrame with columns:
   - raw_line (string)
 
 Bank-specific parsing is determined by the file's directory:
-  - data/raw/amex/amex2026.csv → Amex format
-  - data/raw/bofa/bofa2026.csv → BoFA format
+  - data/bank_statements/amex/amex2026.csv → Amex format
+  - data/bank_statements/bofa/bofa2026.csv → BoFA format
 """
 
 import os
@@ -95,8 +95,8 @@ def parse_csv(path):
     """Parse a CSV statement file.
 
     Bank format is determined from the file's directory:
-    - data/raw/amex/* → Amex format
-    - data/raw/bofa/* → BoFA format
+    - data/bank_statements/amex/* → Amex format
+    - data/bank_statements/bofa/* → BoFA format
 
     Args:
         path: Path to CSV file
@@ -113,6 +113,9 @@ def parse_csv(path):
     # Determine bank from file path
     bank_name = BANK_CONFIG.detect_bank_from_path(path)
     LOG.info("Processing %s statement: %s", bank_name, path)
+
+    # Validate CSV headers against bank's required columns
+    BANK_CONFIG.validate_csv_headers(list(dataframe.columns), bank_name)
 
     # Get bank-specific configuration
     bank_cfg = BANK_CONFIG.get_bank_config(bank_name)
