@@ -128,7 +128,7 @@ SplitwiseImporter/
 │   ├── amex_category_mapping.json
 │   └── gsheets_authentication.json
 ├── data/
-│   ├── raw/                    # Raw CSV statements - create subdirectories as needed:
+│   ├── bank_statements/         # Bank statement CSV files - create subdirectories as needed:
 │   │   ├── american express/   # American Express credit card statements
 │   │   └── bank of america/    # Bank of America credit card/checking statements
 │   ├── processed/              # Processed outputs
