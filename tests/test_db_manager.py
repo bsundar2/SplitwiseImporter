@@ -1,6 +1,6 @@
 import pytest
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from src.database.db_manager import DatabaseManager
 from src.database.models import Transaction, ImportLog
 
@@ -164,7 +164,7 @@ def test_log_import_and_history(db_manager):
     log = ImportLog(
         source_type="amex", source_identifier="test.csv",
         records_attempted=10, records_imported=8, records_skipped=2, records_failed=0,
-        timestamp=datetime.utcnow().isoformat()
+        timestamp=datetime.now(timezone.utc).isoformat()
     )
     db_manager.log_import(log)
     history = db_manager.get_import_history()
