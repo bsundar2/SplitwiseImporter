@@ -2,7 +2,7 @@
   "banks": {
     "amex": {
       "name": "American Express",
-      "path_patterns": ["american express"],
+      "path_patterns": ["american express", "amex"],
       "file_patterns": ["*.csv", "*.txt"],
       "date_column": "Posted Date",
       "description_columns": ["Description"],
@@ -16,7 +16,7 @@
     },
     "bofa": {
       "name": "Bank of America",
-      "path_patterns": ["bank of america"],
+      "path_patterns": ["bank of america", "bofa"],
       "file_patterns": ["*.csv"],
       "date_column": "Posted Date",
       "description_columns": ["Payee"],
