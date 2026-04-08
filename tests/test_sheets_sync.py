@@ -43,7 +43,8 @@ def test_read_from_sheets_not_found(mock_auth):
     mock_gc.open_by_key.return_value = mock_sheet
     mock_sheet.worksheet_by_title.side_effect = pygsheets.WorksheetNotFound("nope")
     
-    assert read_from_sheets("key123", "Missing") is None
+    with pytest.raises(pygsheets.WorksheetNotFound):
+        read_from_sheets("key123", "Missing")
 
 def test_ensure_size_for_append_add_rows():
     ws = MagicMock()
