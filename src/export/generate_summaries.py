@@ -19,6 +19,8 @@ from src.common.env import load_project_env
 load_project_env()
 
 from src.common.sheets_sync import write_to_sheets, read_from_sheets
+from src.common.splitwise_client import SplitwiseClient
+from src.common.transaction_filters import is_user_participant
 from src.common.utils import LOG
 from src.constants.gsheets import (
     WORKSHEET_MONTHLY_SUMMARY,
@@ -39,6 +41,11 @@ def fetch_transactions_for_analysis(year: int = None) -> pd.DataFrame:
         DataFrame with transaction data
     """
     db = DatabaseManager()
+    client = SplitwiseClient()
+
+    # Get current user's name to filter for relevant transactions
+    current_user = client.get_current_user()
+    current_user_name = current_user.getFirstName() if current_user else ""
 
     if year:
         LOG.info(f"Fetching transactions for {year}...")
@@ -57,7 +64,14 @@ def fetch_transactions_for_analysis(year: int = None) -> pd.DataFrame:
 
     # Convert to DataFrame
     data = []
+    filtered_count = 0
     for txn in transactions:
+        # Skip transactions where current user is not a participant
+        # (matches filter in splitwise_export.py fetch_from_database())
+        if not is_user_participant(txn, current_user_name):
+            filtered_count += 1
+            continue
+
         # Parse notes field to extract payment info
         my_paid = 0.0
         my_owed = 0.0

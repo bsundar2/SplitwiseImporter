@@ -32,6 +32,7 @@ load_project_env()
 
 from src.common.sheets_sync import write_to_sheets, read_from_sheets
 from src.common.splitwise_client import SplitwiseClient
+from src.common.transaction_filters import extract_participant_names, is_user_participant
 from src.common.utils import (
     load_state,
     save_state_atomic,
@@ -260,7 +261,6 @@ def fetch_from_database(
         # or: "cc_reference_id: XXX | Imported from Splitwise API | ..."
         my_paid = 0.0
         my_owed = 0.0
-        participant_names = ""
         details = ""
 
         if txn.notes:
@@ -279,15 +279,12 @@ def fetch_from_database(
             if owe_match:
                 my_owed = float(owe_match.group(1).replace(",", ""))
 
-
-            # Extract participant names
-            with_match = re.search(r"With:\s*([^|]+?)(?:\s*$|\s*\|)", txn.notes)
-            if with_match:
-                participant_names = with_match.group(1).strip()
-
         # Skip transactions where the current user is not a participant
-        if current_user_name and current_user_name not in participant_names:
+        if not is_user_participant(txn, current_user_name):
             continue
+
+        # Extract participant names for the row
+        participant_names = extract_participant_names(txn.notes)
 
         # Check if this is a refund (either flagged in DB or detected by description)
         description = txn.description or txn.merchant or ""
