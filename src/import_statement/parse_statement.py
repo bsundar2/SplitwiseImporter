@@ -16,6 +16,7 @@ import pandas as pd
 
 from src.constants.config import CFG_PATHS
 from src.common.utils import LOG, load_yaml, parse_date_safe
+from src.common.transaction_filters import is_payment_transaction
 from src.import_statement.bank_config import BankConfig
 
 # Load configuration
@@ -75,7 +76,10 @@ def _is_likely_refund(row):
     category_text = row.get("category", "") or ""
     combined_text = f"{row['description']} {category_text}".lower()
 
-    # Exclude payment patterns
+    # Exclude payment patterns, including BoFA debit transfers from checking.
+    if is_payment_transaction(row["description"]):
+        return False
+
     payment_keywords = [
         "payment",
         "autopay",
@@ -83,6 +87,12 @@ def _is_likely_refund(row):
         "settle",
         "points for",
         "reward",
+        "recurring from chk",
+        "recurring from checking",
+        "online/mobile recurring",
+        "mobile recurring",
+        "from chk",
+        "from checking",
     ]
     if any(keyword in combined_text for keyword in payment_keywords):
         return False

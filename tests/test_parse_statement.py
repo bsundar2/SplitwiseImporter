@@ -74,6 +74,14 @@ def test_parse_csv_bofa():
     assert bool(expense_row["is_credit"]) is False
     assert expense_row["amount"] == 39.54
 
+
+def test_parse_csv_bofa_skips_recurring_check_payments():
+    path = Path(__file__).resolve().parents[1] / "data" / "bank_statements" / "bank of america" / "bofa_card2_2026.csv"
+    df = parse_csv(str(path))
+    assert not df["description"].str.lower().str.contains("online/mobile recurring from chk").any()
+    assert not df["description"].str.lower().str.contains("from chk").any()
+
+
 def test_parse_bofa_custom_mock():
     with patch("src.import_statement.parse_statement.BANK_CONFIG") as mock_cfg:
         mock_cfg.get_bank_config.return_value = {
