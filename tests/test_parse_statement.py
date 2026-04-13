@@ -76,10 +76,36 @@ def test_parse_csv_bofa():
 
 
 def test_parse_csv_bofa_skips_recurring_check_payments():
-    path = Path(__file__).resolve().parents[1] / "data" / "bank_statements" / "bank of america" / "bofa_card2_2026.csv"
-    df = parse_csv(str(path))
-    assert not df["description"].str.lower().str.contains("online/mobile recurring from chk").any()
-    assert not df["description"].str.lower().str.contains("from chk").any()
+    with patch("src.import_statement.parse_statement.BANK_CONFIG") as mock_cfg:
+        mock_cfg.detect_bank_from_path.return_value = "bofa"
+        mock_cfg.validate_csv_headers.return_value = None
+        mock_cfg.get_bank_config.return_value = {
+            "name": "bofa",
+            "date_column": "Date",
+            "description_columns": ["Description"],
+            "amount_column": "Amount",
+            "category_column": "Category",
+            "reference_column": "Reference",
+            "address_column": "Address",
+            "date_format": "%m/%d/%Y",
+            "skip_rows": 0,
+        }
+        with patch("src.import_statement.parse_statement.pd.read_csv") as mock_read:
+            mock_read.return_value = pd.DataFrame([
+                {
+                    "Date": "04/06/2026",
+                    "Description": "ONLINE/MOBILE RECURRING FROM CHK 9200",
+                    "Amount": "77.00",
+                },
+                {
+                    "Date": "04/06/2026",
+                    "Description": "TARGET RETURN",
+                    "Amount": "50.00",
+                },
+            ])
+            df = parse_csv("data/bank_statements/bank of america/bofa_card2_2026.csv")
+            assert len(df) == 1
+            assert df.iloc[0]["description"] == "TARGET RETURN"
 
 
 def test_parse_bofa_custom_mock():
