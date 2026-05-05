@@ -25,8 +25,8 @@ from src.common.utils import LOG
 from src.constants.gsheets import (
     WORKSHEET_MONTHLY_SUMMARY,
 )
-from src.constants.splitwise import REFUND_KEYWORDS
-from src.database import DatabaseManager
+from src.constants.splitwise import REFUND_KEYWORDS, ExcludedSplitwiseDescriptions
+from src.database import DatabaseManager  # noqa: E402 (after env load)
 
 # Constants
 
@@ -77,8 +77,9 @@ def fetch_transactions_for_analysis(year: int = None) -> pd.DataFrame:
         my_owed = 0.0
 
         if txn.notes:
-            paid_match = re.search(r"Paid: \$?([\d,]+\.?\d*)", txn.notes)
-            owe_match = re.search(r"Owe: \$?([\d,]+\.?\d*)", txn.notes)
+            # Use same regexes as fetch_from_database() to support negative values (refunds)
+            paid_match = re.search(r"Paid:\s*\$?\s*(-?[\d,]+\.?\d*)", txn.notes)
+            owe_match = re.search(r"Owe:\s*\$?\s*(-?[\d,]+\.?\d*)", txn.notes)
 
             if paid_match:
                 my_paid = float(paid_match.group(1).replace(",", ""))
@@ -91,10 +92,13 @@ def fetch_transactions_for_analysis(year: int = None) -> pd.DataFrame:
             keyword in description.lower() for keyword in REFUND_KEYWORDS
         )
 
-        # For refunds, negate my_owed and my_paid to show as credits
+        # For refunds, force my_owed and my_paid to be negative (credits).
+        # Use -abs() instead of simple negation to match fetch_from_database(),
+        # because notes may already store a negative Owe value (e.g. "Owe: -2190.75").
+        # A plain `-my_owed` would double-negate that back to positive.
         if txn.is_refund or is_refund_by_description:
-            my_owed = -my_owed
-            my_paid = -my_paid
+            my_owed = -abs(my_owed)
+            my_paid = -abs(my_paid)
 
         my_net = my_paid - my_owed
 
@@ -114,11 +118,27 @@ def fetch_transactions_for_analysis(year: int = None) -> pd.DataFrame:
 
     df = pd.DataFrame(data)
 
-    # Filter out deleted and payment transactions
+    # Filter out deleted transactions
     df = df[~df["is_deleted"]]
-    df = df[
-        ~((df["description"].str.lower() == "payment") & (df["category"] == "General"))
-    ]
+
+    # Filter "Settle all balances" (same as fetch_from_database)
+    settle_mask = (
+        df["description"]
+        .fillna("")
+        .str.strip()
+        .str.lower()
+        .eq(ExcludedSplitwiseDescriptions.SETTLE_ALL_BALANCES.value.lower())
+    )
+    df = df[~settle_mask]
+
+    # Filter payment transactions using the same word-boundary logic as the raw expenses sheet
+    desc_series = df["description"].fillna("").str.strip()
+    payment_exact = desc_series.str.lower().eq(
+        ExcludedSplitwiseDescriptions.PAYMENT.value.lower()
+    )
+    payment_word = desc_series.str.contains(r"\bpayment\b", case=False, na=False)
+    payment_mask = (payment_exact | payment_word) & (df["category"] == "General")
+    df = df[~payment_mask]
 
     # Convert date to datetime
     df["date"] = pd.to_datetime(df["date"])
