@@ -263,12 +263,17 @@ def fetch_from_database(
         my_owed = 0.0
         details = ""
 
-        if txn.notes:
-            # Extract cc_reference_id for details (just the ID number)
-            cc_ref_match = re.search(r"cc_reference_id:\s*(\d+)", txn.notes)
+        # Use the dedicated cc_reference_id column first (always populated from CSV import
+        # and kept in sync by sync_from_splitwise). Fall back to the legacy notes regex
+        # only for older rows that predate the column.
+        if txn.cc_reference_id:
+            details = str(txn.cc_reference_id).strip()
+        elif txn.notes:
+            cc_ref_match = re.search(r"cc_reference_id:\s*(\S+)", txn.notes)
             if cc_ref_match:
                 details = cc_ref_match.group(1)
 
+        if txn.notes:
             # Extract MY_PAID
             paid_match = re.search(r"Paid:\s*\$?\s*(-?[\d,]+\.?\d*)", txn.notes)
             if paid_match:
